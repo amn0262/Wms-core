@@ -54,7 +54,7 @@ export function generateA4ShippingLabels(
     doc.setLineDashPattern([], 0); // reset dash
 
     // ==========================================
-    // 1. ABSENDER (المرسل فقط باللغة الألمانية وبدون اسم الدولة)
+    // 1. SENDER SECTION (Clean DIN A4 Label Layout)
     // ==========================================
     const senderX = x + 7;
     let senderY = y + 9;
@@ -84,7 +84,7 @@ export function generateA4ShippingLabels(
     doc.line(x + 7, y + 25, x + 98, y + 25);
 
     // ==========================================
-    // 2. EMPFÄNGER (المستقبل فقط باللغة الألمانية وبدون اسم الدولة)
+    // 2. RECIPIENT SECTION (Clean DIN A4 Label Layout)
     // ==========================================
     const recipientX = x + 10;
     let recipientY = y + 36;

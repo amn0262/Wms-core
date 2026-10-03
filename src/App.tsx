@@ -4,7 +4,6 @@ import {
   db,
   getSenderSettings,
   saveSenderSettings,
-  seedDemoData,
   DEFAULT_SENDER_SETTINGS,
 } from './db';
 import { Sidebar } from './components/Sidebar';
@@ -39,12 +38,6 @@ export default function App() {
   // Load data from Dexie
   const loadAllData = useCallback(async () => {
     try {
-      // Check if DB empty and seed on very first run
-      const count = await db.customers.count();
-      if (count === 0) {
-        await seedDemoData();
-      }
-
       const allCustomers = await db.customers.toArray();
       const allFinances = await db.finances.toArray();
       const settings = await getSenderSettings();
@@ -52,17 +45,6 @@ export default function App() {
       setCustomers(allCustomers);
       setTransactions(allFinances);
       setSenderSettings(settings);
-
-      // If queue is empty, auto-populate first 2 customers as an initial example
-      setPrintQueue((prev) => {
-        if (prev.length > 0) return prev;
-        return allCustomers.slice(0, 2).map((c) => ({
-          id: `init-${c.id}-${Date.now()}`,
-          customer: c,
-          quantity: 1,
-          referenceNote: 'Order dispatch batch',
-        }));
-      });
     } catch (err) {
       console.error('Error loading Dexie database:', err);
     } finally {
@@ -146,12 +128,6 @@ export default function App() {
     setSenderSettings(settings);
   };
 
-  // Seed demo data manually
-  const handleSeedDemoData = async () => {
-    await seedDemoData();
-    await loadAllData();
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0b0d11] text-white flex items-center justify-center">
@@ -208,7 +184,6 @@ export default function App() {
                   setIsCustomerModalOpen(true);
                 }}
                 onNavigate={(view) => setCurrentView(view)}
-                onSeedDemoData={handleSeedDemoData}
               />
             )}
 
@@ -226,6 +201,7 @@ export default function App() {
                 }}
                 onAddToPrintQueue={handleAddToPrintQueue}
                 onDeleteCustomer={handleDeleteCustomer}
+                showCountryField={senderSettings.showCountryField ?? false}
               />
             )}
 
@@ -265,7 +241,6 @@ export default function App() {
                 customers={customers}
                 transactions={transactions}
                 onReloadData={loadAllData}
-                onSeedDemoData={handleSeedDemoData}
               />
             )}
           </div>
@@ -292,6 +267,7 @@ export default function App() {
         }}
         onSave={handleSaveCustomer}
         editingCustomer={editingCustomer}
+        showCountryField={senderSettings.showCountryField ?? false}
       />
     </div>
   );

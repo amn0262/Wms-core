@@ -6,7 +6,6 @@ import {
   Printer,
   PlusCircle,
   UserPlus,
-  Sparkles,
   ArrowUpRight,
   ArrowDownRight,
   PackageCheck,
@@ -31,7 +30,6 @@ interface DashboardViewProps {
   onOpenTransactionModal: () => void;
   onOpenCustomerModal: () => void;
   onNavigate: (view: string) => void;
-  onSeedDemoData: () => Promise<void>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -41,7 +39,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenTransactionModal,
   onOpenCustomerModal,
   onNavigate,
-  onSeedDemoData,
 }) => {
   const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
   const [liveTimestamp, setLiveTimestamp] = useState<string>('');
@@ -325,7 +322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* ======================================================== */}
-      {/* 1. STOCK MARKET LIVE TICKER MARQUEE (شريط البورصة الحي) */}
+      {/* 1. STOCK MARKET LIVE TICKER MARQUEE                      */}
       {/* ======================================================== */}
       <div className="relative overflow-hidden rounded-xl bg-[#090b0e] border border-slate-800 shadow-md">
         <div className="flex items-center">
@@ -372,10 +369,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               onClick={() => setIsExchangeTerminalOpen(true)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 text-xs font-mono border border-slate-700/80 transition-all cursor-pointer"
-              title="Vollbild"
+              title="Fullscreen Terminal"
             >
               <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline text-[11px]">Vollbild</span>
+              <span className="hidden sm:inline text-[11px]">Fullscreen</span>
             </button>
           </div>
         </div>
@@ -669,7 +666,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-emerald-300">Live Exchange Terminal</div>
-                    <div className="text-[11px] text-emerald-400/80">وضع البورصة المباشر بملء الشاشة</div>
+                    <div className="text-[11px] text-emerald-400/80">Fullscreen live financial market monitor</div>
                   </div>
                 </div>
                 <Maximize2 className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
@@ -724,24 +721,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300" />
               </button>
-
-              {customers.length === 0 && (
-                <button
-                  onClick={onSeedDemoData}
-                  className="w-full flex items-center justify-between p-3 rounded-lg bg-rose-600/10 hover:bg-rose-600/20 border border-rose-500/30 text-left transition-all group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-md bg-rose-600 text-white">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-semibold text-rose-300">Seed Warehouse Ledger</div>
-                      <div className="text-[11px] text-rose-400/80">Populate realistic test records</div>
-                    </div>
-                  </div>
-                  <ArrowUpRight className="w-4 h-4 text-rose-400" />
-                </button>
-              )}
             </div>
           </div>
         </div>
@@ -988,7 +967,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         )}
       </div>
 
-      {/* Fullscreen Live Stock Exchange Terminal (بدون قوائم أو أزرار) */}
+      {/* Fullscreen Live Stock Exchange Terminal (Clean View) */}
       <LiveExchangeTerminal
         isOpen={isExchangeTerminalOpen}
         onClose={() => setIsExchangeTerminalOpen(false)}

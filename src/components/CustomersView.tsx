@@ -21,6 +21,7 @@ interface CustomersViewProps {
   onOpenTransactionWithCustomer: (customerId: number) => void;
   onAddToPrintQueue: (customer: Customer) => void;
   onDeleteCustomer: (id: number) => Promise<void>;
+  showCountryField?: boolean;
 }
 
 export const CustomersView: React.FC<CustomersViewProps> = ({
@@ -30,6 +31,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   onOpenTransactionWithCustomer,
   onAddToPrintQueue,
   onDeleteCustomer,
+  showCountryField = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'revenue' | 'profit' | 'shipping'>('revenue');
@@ -235,9 +237,11 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                           {/* Location */}
                           <td className="py-3.5 px-4 text-slate-400">
                             <div>{c.city}</div>
-                            <div className="text-[11px] text-slate-500 font-medium">
-                              {c.country}
-                            </div>
+                            {showCountryField && (
+                              <div className="text-[11px] text-slate-500 font-medium">
+                                {c.country}
+                              </div>
+                            )}
                           </td>
 
                           {/* Revenue */}
@@ -365,7 +369,9 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                   <div className="font-semibold text-slate-200">
                     {selectedCustomer.postalCode} {selectedCustomer.city}
                   </div>
-                  <div className="text-slate-400">{selectedCustomer.country}</div>
+                  {showCountryField && (
+                    <div className="text-slate-400">{selectedCustomer.country}</div>
+                  )}
                 </div>
               </div>
 

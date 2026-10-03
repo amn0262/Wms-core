@@ -7,6 +7,7 @@ interface CustomerModalProps {
   onClose: () => void;
   onSave: (customer: Omit<Customer, 'id' | 'created'> & { id?: number }) => Promise<void>;
   editingCustomer?: Customer | null;
+  showCountryField?: boolean;
 }
 
 export const CustomerModal: React.FC<CustomerModalProps> = ({
@@ -14,6 +15,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   onClose,
   onSave,
   editingCustomer,
+  showCountryField = false,
 }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -196,20 +198,22 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             </div>
           </div>
 
-          {/* Country */}
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Country <span className="text-rose-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={country}
-              onChange={(e) => setCountry(e.target.value)}
-              required
-              placeholder="Germany"
-              className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
-            />
-          </div>
+          {/* Country (Conditionally toggled from Settings) */}
+          {showCountryField && (
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Country <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                required={showCountryField}
+                placeholder="Germany"
+                className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+              />
+            </div>
+          )}
 
           {/* Contact Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

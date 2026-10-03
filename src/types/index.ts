@@ -53,4 +53,5 @@ export interface SenderSettings {
   senderCountry: string;
   currencySymbol: string;
   companyVat?: string;
+  showCountryField?: boolean; // When false, hide the country field across customer forms and address views
 }

@@ -195,7 +195,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] bg-[#05070a] text-slate-100 flex flex-col justify-between overflow-hidden select-none font-sans">
       {/* ======================================================== */}
-      {/* 1. TOP LIVE TICKER MARQUEE (نفس الشريط المتحرك من الرئيسية)*/}
+      {/* 1. TOP LIVE TICKER MARQUEE (SYNCHRONIZED LIVE FEED)      */}
       {/* ======================================================== */}
       <div className="shrink-0 bg-[#080b10] border-b border-slate-800/80 flex items-center justify-between z-20 overflow-hidden">
         {/* Lead-in indicator */}

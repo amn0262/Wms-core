@@ -26,6 +26,7 @@ export const DEFAULT_SENDER_SETTINGS: SenderSettings = {
   senderCountry: 'Germany',
   currencySymbol: '€',
   companyVat: 'DE382910482',
+  showCountryField: false,
 };
 
 export async function getSenderSettings(): Promise<SenderSettings> {

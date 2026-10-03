@@ -405,7 +405,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       </div>
 
       {/* ======================================================== */}
-      {/* 1. SAVE PDF OPTIONS MODAL (قائمة خيارات حفظ الملف)       */}
+      {/* 1. SAVE PDF OPTIONS MODAL                                */}
       {/* ======================================================== */}
       {isSavePdfModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
@@ -415,10 +415,10 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
               <div>
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Printer className="w-4 h-4 text-rose-500" />
-                  <span>Versandetiketten speichern / خيارات حفظ وطباعة الملف</span>
+                  <span>Save Shipping Labels PDF</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Wähle, wie und an welchem Speicherort du die A4-Etikettendatei ablegen oder drucken möchtest
+                  Choose how and where to save or print the generated A4 sheet
                 </p>
               </div>
               <button
@@ -440,14 +440,14 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
 
               {/* Summary Pill Strip */}
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>{totalLabels} Etiketten ({totalPages} DIN A4 {totalPages === 1 ? 'Seite' : 'Seiten'})</span>
-                <span className="text-rose-400 font-semibold">105 × 99 mm Raster</span>
+                <span>{totalLabels} Labels ({totalPages} DIN A4 {totalPages === 1 ? 'Page' : 'Pages'})</span>
+                <span className="text-rose-400 font-semibold">105 × 99 mm Grid</span>
               </div>
 
               {/* Filename Input */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Dateiname / اسم الملف
+                  File Name
                 </label>
                 <div className="flex items-center">
                   <input
@@ -465,7 +465,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
               {/* Menu of Options */}
               <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                  Speichermethode wählen / خيارات الحفظ:
+                  Select Save Destination:
                 </span>
 
                 {/* Option A: Native Save As (Choose Directory) */}
@@ -479,15 +479,15 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Speichern unter... (Verzeichnis frei wählen)
+                        Save As... (Choose Destination Folder)
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        حفظ مخصص — يفتح نافذة النظام لاختيار المجلد والقرص يدوياً
+                        Pick exact local folder, external drive, or network share
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
-                    Auswählen →
+                    Browse →
                   </span>
                 </button>
 
@@ -502,15 +502,15 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Als Datei herunterladen (Downloads-Ordner)
+                        Download to Downloads Folder
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        تنزيل الملف في مجلد التنزيلات الافتراضي للمتصفح
+                        Quick download directly to your default browser downloads path
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                    Herunterladen ↓
+                    Download ↓
                   </span>
                 </button>
 
@@ -525,15 +525,15 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Im Browser öffnen & drucken (Druckdialog)
+                        Open in New Tab & Print
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        فتح ملف الـ PDF في نافذة جديدة للطباعة الفورية مباشرةً عبر الطابعة
+                        View rendered PDF and open system print dialog directly
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-rose-400 group-hover:text-rose-300">
-                    Öffnen ↗
+                    Open ↗
                   </span>
                 </button>
 
@@ -549,15 +549,15 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-white">
-                          Über Geräte-Menü teilen (AirDrop / Mail / Cloud)
+                          Share File via System Menu
                         </div>
                         <div className="text-[11px] text-slate-400">
-                          مشاركة ملف الملصقات عبر تطبيقات ومجلدات النظام
+                          AirDrop, email attachment, or local device apps
                         </div>
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Teilen
+                      Share
                     </span>
                   </button>
                 )}
@@ -571,7 +571,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                 onClick={() => setIsSavePdfModalOpen(false)}
                 className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
-                Schließen (إغلاق)
+                Close
               </button>
             </div>
           </div>

@@ -3,7 +3,6 @@ import {
   Save,
   Download,
   Upload,
-  Sparkles,
   AlertTriangle,
   Building,
   CheckCircle2,
@@ -12,8 +11,10 @@ import {
   Share2,
   FileCode,
   X,
-  FileText,
   HardDrive,
+  Trash2,
+  ShieldAlert,
+  Globe,
 } from 'lucide-react';
 import type { Customer, Transaction, SenderSettings } from '../types';
 import { db } from '../db';
@@ -24,7 +25,6 @@ interface SettingsViewProps {
   customers: Customer[];
   transactions: Transaction[];
   onReloadData: () => Promise<void>;
-  onSeedDemoData: () => Promise<void>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
@@ -33,7 +33,6 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   customers,
   transactions,
   onReloadData,
-  onSeedDemoData,
 }) => {
   const [formSettings, setFormSettings] = useState<SenderSettings>(senderSettings);
   const [isSavedAlert, setIsSavedAlert] = useState(false);
@@ -48,6 +47,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  // Multi-Step Reset Database Modal State
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [confirmCheck1, setConfirmCheck1] = useState(false);
+  const [confirmCheck2, setConfirmCheck2] = useState(false);
+  const [confirmPhrase, setConfirmPhrase] = useState('');
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetSuccessAlert, setResetSuccessAlert] = useState(false);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,11 +93,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setSaveSuccessMsg('Datei erfolgreich im Download-Ordner gespeichert!');
+    setSaveSuccessMsg('File successfully saved to your Downloads folder!');
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
-  // Option 1: Native "Save As" File Picker (allows choosing directory & name)
+  // Option 1: Native "Save As" File Picker
   const handleSaveWithPicker = async () => {
     const jsonString = getBackupJSONString(backupFormat === 'minified');
     const finalName = backupFilename.endsWith('.json')
@@ -103,7 +110,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           suggestedName: finalName,
           types: [
             {
-              description: 'JSON-Sicherungsdatei (*.json)',
+              description: 'JSON Backup File (*.json)',
               accept: { 'application/json': ['.json'] },
             },
           ],
@@ -111,17 +118,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         const writable = await handle.createWritable();
         await writable.write(jsonString);
         await writable.close();
-        setSaveSuccessMsg('Backup erfolgreich im gewählten Verzeichnis gespeichert!');
+        setSaveSuccessMsg('Backup successfully saved to selected folder!');
         setTimeout(() => setSaveSuccessMsg(null), 4000);
       } catch (err: any) {
         if (err.name !== 'AbortError') {
           console.error(err);
-          // Fallback to standard download if picker errors
           triggerDownload(jsonString, finalName);
         }
       }
     } else {
-      // Browser does not support showSaveFilePicker, fall back gracefully
       triggerDownload(jsonString, finalName);
     }
   };
@@ -144,7 +149,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  // Option 4: Device Share (Share Sheet)
+  // Option 4: Device Share
   const handleDeviceShare = async () => {
     const jsonString = getBackupJSONString(backupFormat === 'minified');
     const finalName = backupFilename.endsWith('.json')
@@ -165,7 +170,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
       }
     } else {
-      alert('Die native Teilen-Funktion wird in diesem Browser/Gerät nicht unterstützt. Bitte nutze "Speichern unter" oder "Herunterladen".');
+      alert('Native sharing is not supported in this browser. Please use "Save As" or "Download".');
     }
   };
 
@@ -174,7 +179,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('Warnung: Das Wiederherstellen dieses Backups überschreibt alle aktuellen Datenbankeinträge. Fortfahren?')) {
+    if (!window.confirm('Warning: Restoring this backup will replace current database records. Continue?')) {
       e.target.value = '';
       return;
     }
@@ -184,7 +189,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       try {
         const parsed = JSON.parse(event.target?.result as string);
         if (!parsed.customers || !parsed.finances) {
-          throw new Error('Ungültige WMS-Backup-Struktur.');
+          throw new Error('Invalid WMS backup structure.');
         }
 
         await db.customers.clear();
@@ -202,32 +207,57 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
 
         await onReloadData();
-        setImportStatus('Backup erfolgreich wiederhergestellt!');
+        setImportStatus('Backup restored successfully!');
         setTimeout(() => setImportStatus(null), 4000);
       } catch (err: any) {
         console.error(err);
-        alert(`Wiederherstellung fehlgeschlagen: ${err.message || 'Beschädigte JSON-Datei'}`);
+        alert(`Restore failed: ${err.message || 'Corrupted JSON file'}`);
       }
     };
     reader.readAsText(file);
     e.target.value = '';
   };
 
-  const handleFactoryReset = async () => {
-    if (
-      window.confirm(
-        'ACHTUNG: Möchtest du wirklich alle Kunden und Transaktionen unwiderruflich löschen?'
-      )
-    ) {
+  // Multi-step reset execution
+  const isPhraseValid =
+    confirmPhrase.trim().toUpperCase() === 'DELETE' ||
+    confirmPhrase.trim().toUpperCase() === 'LÖSCHEN';
+  const isResetButtonEnabled = confirmCheck1 && confirmCheck2 && isPhraseValid && !isResetting;
+
+  const handleExecuteReset = async () => {
+    if (!isResetButtonEnabled) return;
+    setIsResetting(true);
+    try {
       await db.customers.clear();
       await db.finances.clear();
       await onReloadData();
-      alert('Lokale Datenbank wurde vollständig zurückgesetzt.');
+      setIsResetModalOpen(false);
+      setConfirmCheck1(false);
+      setConfirmCheck2(false);
+      setConfirmPhrase('');
+      setResetSuccessAlert(true);
+      setTimeout(() => setResetSuccessAlert(false), 5000);
+    } catch (err: any) {
+      console.error('Error during database wipe:', err);
+      alert(`Failed to reset database: ${err?.message || 'Unknown error'}`);
+    } finally {
+      setIsResetting(false);
     }
   };
 
   return (
     <div className="space-y-8 max-w-5xl">
+      {/* Reset Success Banner */}
+      {resetSuccessAlert && (
+        <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-3 shadow-md animate-in fade-in">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div className="text-xs">
+            <span className="font-bold block text-sm text-white">Database Successfully Reset</span>
+            All client accounts and financial ledger records were permanently cleared from local storage.
+          </div>
+        </div>
+      )}
+
       {/* Sender Configuration Card */}
       <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
         <div className="flex items-center justify-between mb-4">
@@ -235,17 +265,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Building className="w-5 h-5 text-rose-500" />
             <div>
               <h3 className="text-base font-semibold text-white">
-                Absender-Informationen & Rücksendeadresse
+                Sender Information & Return Address
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Wird als offizieller Absender auf den A4-Versandetiketten gedruckt
+                Printed as the official dispatch sender on A4 shipping label sheets
               </p>
             </div>
           </div>
           {isSavedAlert && (
             <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Gespeichert!</span>
+              <span>Saved!</span>
             </div>
           )}
         </div>
@@ -254,7 +284,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Firmenname / Absender
+                Company / Sender Name
               </label>
               <input
                 type="text"
@@ -268,7 +298,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Straße & Hausnummer
+                Street & House Number
               </label>
               <input
                 type="text"
@@ -285,7 +315,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Postleitzahl (PLZ)
+                Postal Code (PLZ)
               </label>
               <input
                 type="text"
@@ -299,7 +329,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Stadt / Ort
+                City / Location
               </label>
               <input
                 type="text"
@@ -313,13 +343,55 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
           </div>
 
+          {/* New Requested Feature: Address Fields Configuration (Hide/Show Country Field) */}
+          <div className="pt-4 mt-2 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-md bg-rose-500/10 text-rose-400 shrink-0">
+                  <Globe className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">
+                      Show Country Field in Addresses
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                        formSettings.showCountryField
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                    >
+                      {formSettings.showCountryField ? 'Visible' : 'Hidden (Germany Only)'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
+                    When turned off, the Country field is hidden from customer forms and address views, simplifying daily operations since all customers are located in Germany.
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={formSettings.showCountryField ?? false}
+                  onChange={(e) =>
+                    setFormSettings({ ...formSettings, showCountryField: e.target.checked })
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+              </label>
+            </div>
+          </div>
+
           <div className="pt-2 flex justify-end">
             <button
               type="submit"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-xs"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-xs cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Absenderprofil speichern</span>
+              <span>Save Sender Profile & Preferences</span>
             </button>
           </div>
         </form>
@@ -332,23 +404,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-2 text-white font-semibold text-base">
               <Download className="w-4 h-4 text-emerald-400" />
-              <span>Datenbank-Sicherung exportieren</span>
+              <span>Export Database Backup</span>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Öffnet das Speichermenü mit erweiterten Optionen: Speicherort selbst wählen, als Datei herunterladen, in die Zwischenablage kopieren oder teilen.
+              Open backup options to save your complete database: custom folder selection, direct download, clipboard copy, or system sharing.
             </p>
             <div className="text-xs font-mono text-slate-500 space-y-1 mb-6">
-              <div>· Kunden: {customers.length} Datensätze</div>
-              <div>· Finanztransaktionen: {transactions.length} Datensätze</div>
+              <div>· Clients: {customers.length} records</div>
+              <div>· Financial ledger: {transactions.length} records</div>
             </div>
           </div>
 
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="w-full py-2.5 px-4 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2 transition-colors shadow-xs"
+            className="w-full py-2.5 px-4 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
           >
             <Download className="w-4 h-4 text-emerald-400" />
-            <span>Sicherungsoptionen anzeigen...</span>
+            <span>Open Backup Options...</span>
           </button>
         </div>
 
@@ -357,10 +429,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-2 text-white font-semibold text-base">
               <Upload className="w-4 h-4 text-rose-400" />
-              <span>Sicherung wiederherstellen</span>
+              <span>Restore Database Backup</span>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Wähle eine gültige WMS JSON-Backup-Datei aus, um Daten einzuspielen. Achtung: Vorhandene Datensätze werden ersetzt.
+              Select a valid WMS JSON backup file to restore records. Existing entries will be updated or replaced.
             </p>
             {importStatus && (
               <div className="p-2.5 mb-3 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
@@ -380,52 +452,43 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
               <span className="w-full cursor-pointer py-2.5 px-4 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-xs font-semibold text-rose-300 flex items-center justify-center gap-2 transition-colors">
                 <Upload className="w-4 h-4" />
-                <span>JSON-Datei auswählen & wiederherstellen</span>
+                <span>Select & Restore JSON Backup</span>
               </span>
             </label>
           </div>
         </div>
       </div>
 
-      {/* Demo Data & Danger Zone */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
-          <div className="flex items-center gap-2 mb-2 text-white font-semibold text-base">
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Demodaten-Generator</span>
+      {/* Danger Zone: Factory Reset (Multi-Step Confirmation) */}
+      <div className="p-6 rounded-xl bg-[#141820] border border-rose-900/40 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-rose-400 font-semibold text-base">
+              <ShieldAlert className="w-5 h-5 text-rose-500" />
+              <span>Factory Reset / Wipe Database</span>
+            </div>
+            <p className="text-xs text-slate-400 max-w-xl">
+              Permanently clears all customers ({customers.length}) and transaction records ({transactions.length}) from local browser storage. A multi-step security verification is enforced to prevent accidental data loss.
+            </p>
           </div>
-          <p className="text-xs text-slate-400 mb-5">
-            Fügt realistische Testdaten hinzu (Kunden, Bestellungen, DHL-Logistikkosten, Gabelstapler-Wartung und Vorräte).
-          </p>
-          <button
-            onClick={onSeedDemoData}
-            className="w-full py-2.5 px-4 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-xs font-semibold text-amber-300 flex items-center justify-center gap-2 transition-colors"
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Beispieldatenbank generieren</span>
-          </button>
-        </div>
 
-        <div className="p-6 rounded-xl bg-[#141820] border border-red-900/40 shadow-xs">
-          <div className="flex items-center gap-2 mb-2 text-rose-400 font-semibold text-base">
-            <AlertTriangle className="w-4 h-4" />
-            <span>Werkseinstellungen</span>
-          </div>
-          <p className="text-xs text-slate-400 mb-5">
-            Löscht alle Kunden und Finanztransaktionen im lokalen Browserspeicher vollständig.
-          </p>
           <button
-            onClick={handleFactoryReset}
-            className="w-full py-2.5 px-4 rounded-lg bg-rose-950/60 hover:bg-rose-900 border border-rose-800 text-xs font-semibold text-rose-300 flex items-center justify-center gap-2 transition-colors"
+            onClick={() => {
+              setConfirmCheck1(false);
+              setConfirmCheck2(false);
+              setConfirmPhrase('');
+              setIsResetModalOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-lg bg-rose-950/70 hover:bg-rose-900/80 border border-rose-800 text-xs font-bold text-rose-300 flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
-            <AlertTriangle className="w-4 h-4" />
-            <span>Lokale Datenbank leeren</span>
+            <Trash2 className="w-4 h-4 text-rose-400" />
+            <span>Reset Database...</span>
           </button>
         </div>
       </div>
 
       {/* ======================================================== */}
-      {/* EXPORT BACKUP OPTIONS MODAL (قائمة خيارات حفظ النسخة)    */}
+      {/* 1. EXPORT BACKUP OPTIONS MODAL                           */}
       {/* ======================================================== */}
       {isExportModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-xs flex items-center justify-center p-4">
@@ -435,15 +498,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div>
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Download className="w-4 h-4 text-emerald-400" />
-                  <span>Sicherungsoptionen / خيارات حفظ النسخة الاحتياطية</span>
+                  <span>Backup Export Options</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Wähle, wie und wo du die Sicherung deines Warenwirtschaftssystems speichern möchtest
+                  Select your preferred format and storage destination for the WMS database
                 </p>
               </div>
               <button
                 onClick={() => setIsExportModalOpen(false)}
-                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -460,7 +523,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {/* Summary Pill Strip */}
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>Inhalt: {customers.length} Kunden · {transactions.length} Buchungen</span>
+                <span>Payload: {customers.length} Clients · {transactions.length} Transactions</span>
                 <span className="text-emerald-400 font-semibold">JSON Format</span>
               </div>
 
@@ -468,7 +531,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Dateiname / اسم الملف
+                    File Name
                   </label>
                   <div className="flex items-center">
                     <input
@@ -485,30 +548,30 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Formatierung / نوع التنسيق
+                    Formatting
                   </label>
                   <div className="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
                     <button
                       type="button"
                       onClick={() => setBackupFormat('formatted')}
-                      className={`py-1.5 px-3 rounded-md font-medium transition-all ${
+                      className={`py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
                         backupFormat === 'formatted'
                           ? 'bg-rose-600 text-white shadow-xs'
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Lesbar formatiert (Indent 2)
+                      Formatted (Indent 2)
                     </button>
                     <button
                       type="button"
                       onClick={() => setBackupFormat('minified')}
-                      className={`py-1.5 px-3 rounded-md font-medium transition-all ${
+                      className={`py-1.5 px-3 rounded-md font-medium transition-all cursor-pointer ${
                         backupFormat === 'minified'
                           ? 'bg-rose-600 text-white shadow-xs'
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Kompakt (Minified)
+                      Compact (Minified)
                     </button>
                   </div>
                 </div>
@@ -517,13 +580,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {/* The Menu of Saving Options */}
               <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                  Speichermethode wählen / خيارات الحفظ:
+                  Select Save Destination:
                 </span>
 
                 {/* Option A: Native Save As (Choose Directory) */}
                 <button
                   onClick={handleSaveWithPicker}
-                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/40 text-left transition-all group"
+                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-emerald-500/40 text-left transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-400 group-hover:bg-emerald-500/20">
@@ -531,22 +594,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Speichern unter... (Verzeichnis frei wählen)
+                        Save As... (Choose Destination Folder)
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        حفظ مخصص — يفتح نافذة النظام لاختيار المجلد والقرص يدوياً
+                        Pick exact local folder, external drive, or network share
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
-                    Auswählen →
+                    Browse →
                   </span>
                 </button>
 
                 {/* Option B: Direct Browser Download */}
                 <button
                   onClick={handleDirectDownload}
-                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group"
+                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-md bg-sky-500/10 text-sky-400 group-hover:bg-sky-500/20">
@@ -554,22 +617,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Als Datei herunterladen (Downloads-Ordner)
+                        Download to Downloads Folder
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        تنزيل الملف العادي في مجلد التنزيلات الافتراضي
+                        Quick download directly to your default browser downloads path
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                    Herunterladen ↓
+                    Download ↓
                   </span>
                 </button>
 
                 {/* Option C: Copy to Clipboard */}
                 <button
                   onClick={handleCopyToClipboard}
-                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group"
+                  className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
                     <div className="p-2 rounded-md bg-amber-500/10 text-amber-400 group-hover:bg-amber-500/20">
@@ -577,18 +640,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        In die Zwischenablage kopieren (Clipboard)
+                        Copy JSON to Clipboard
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        نسخ بيانات الـ JSON مباشرة للصقها في ملف أو بريد
+                        Copy raw JSON string to paste into text editor or email
                       </div>
                     </div>
                   </div>
                   {copySuccess ? (
-                    <span className="text-xs font-bold text-emerald-400">Kopiert! ✓</span>
+                    <span className="text-xs font-bold text-emerald-400">Copied! ✓</span>
                   ) : (
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Kopieren
+                      Copy
                     </span>
                   )}
                 </button>
@@ -597,7 +660,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {typeof navigator !== 'undefined' && 'share' in navigator && (
                   <button
                     onClick={handleDeviceShare}
-                    className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group"
+                    className="w-full flex items-center justify-between p-3.5 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-md bg-purple-500/10 text-purple-400 group-hover:bg-purple-500/20">
@@ -605,15 +668,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-white">
-                          Über Geräte-Menü teilen (AirDrop / Mail / Cloud)
+                          Share File via System Menu
                         </div>
                         <div className="text-[11px] text-slate-400">
-                          مشاركة النسخة عبر تطبيقات ومجلدات النظام السحابية
+                          AirDrop, email attachment, or local device apps
                         </div>
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Teilen
+                      Share
                     </span>
                   </button>
                 )}
@@ -624,13 +687,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowJsonPreview(!showJsonPreview)}
-                  className="text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors"
+                  className="text-xs font-medium text-slate-400 hover:text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
                 >
                   <FileCode className="w-3.5 h-3.5 text-rose-500" />
                   <span>
                     {showJsonPreview
-                      ? 'JSON-Vorschau ausblenden'
-                      : 'JSON-Dateninhalt vorab ansehen... (معاينة الكود)'}
+                      ? 'Hide JSON Preview'
+                      : 'Preview JSON Payload Content...'}
                   </span>
                 </button>
 
@@ -649,9 +712,137 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <button
                 type="button"
                 onClick={() => setIsExportModalOpen(false)}
-                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
+                className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
-                Schließen (إغلاق)
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* 2. MULTI-STEP DATABASE WIPE CONFIRMATION MODAL           */}
+      {/* ======================================================== */}
+      {isResetModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-[#141820] border border-rose-600/50 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 bg-rose-950/40 border-b border-rose-900/50 flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+                  <ShieldAlert className="w-5 h-5 text-rose-500" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Permanent Database Reset
+                  </h3>
+                  <p className="text-xs text-rose-300/80">
+                    Security Check: Multi-step verification required
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsResetModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5 overflow-y-auto">
+              {/* Critical Alert Box */}
+              <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-800/60 text-xs text-rose-200 space-y-2">
+                <div className="font-bold text-rose-300 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>Warning: Irreversible Action</span>
+                </div>
+                <p className="text-slate-300 leading-relaxed">
+                  This action will permanently delete all client accounts ({customers.length}) and all finance and order ledger entries ({transactions.length}) from local storage. Deleted data cannot be recovered without a previous backup.
+                </p>
+              </div>
+
+              {/* Confirmation Step 1 */}
+              <label className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors">
+                <input
+                  type="checkbox"
+                  checked={confirmCheck1}
+                  onChange={(e) => setConfirmCheck1(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-700 text-rose-600 focus:ring-rose-500 bg-slate-800 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-white block">
+                    1. Acknowledge Irreversibility
+                  </span>
+                  <span className="text-slate-400 mt-0.5 block">
+                    I understand that all database records will be permanently wiped immediately.
+                  </span>
+                </div>
+              </label>
+
+              {/* Confirmation Step 2 */}
+              <label className="flex items-start gap-3 p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 hover:border-slate-700 cursor-pointer select-none transition-colors">
+                <input
+                  type="checkbox"
+                  checked={confirmCheck2}
+                  onChange={(e) => setConfirmCheck2(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-slate-700 text-rose-600 focus:ring-rose-500 bg-slate-800 cursor-pointer"
+                />
+                <div className="text-xs">
+                  <span className="font-semibold text-white block">
+                    2. Backup Verification
+                  </span>
+                  <span className="text-slate-400 mt-0.5 block">
+                    I have exported a JSON backup or confirm that I no longer need this data.
+                  </span>
+                </div>
+              </label>
+
+              {/* Confirmation Step 3: Security Phrase Input */}
+              <div className="p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
+                <label className="block text-xs font-semibold text-white">
+                  3. Enter Security Confirmation Phrase:
+                </label>
+                <p className="text-[11px] text-slate-400">
+                  Type <strong className="text-rose-400 font-mono">DELETE</strong> into the field below to unlock the button:
+                </p>
+                <input
+                  type="text"
+                  value={confirmPhrase}
+                  onChange={(e) => setConfirmPhrase(e.target.value)}
+                  placeholder="DELETE"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2 text-xs text-white font-mono tracking-wider focus:outline-none focus:border-rose-500 uppercase"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="px-6 py-4 bg-slate-900/60 border-t border-slate-800 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setIsResetModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleExecuteReset}
+                disabled={!isResetButtonEnabled}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-md cursor-pointer"
+              >
+                {isResetting ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Wiping Database...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Permanently Wipe All Data</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
