@@ -1,9 +1,19 @@
 import Dexie, { type Table } from 'dexie';
-import type { Customer, Transaction, SenderSettings } from '../types';
+import type {
+  Customer,
+  Transaction,
+  SenderSettings,
+  Supplier,
+  SupplierTransaction,
+  CustomerOrder,
+} from '../types';
 
 export class WMSDatabase extends Dexie {
   customers!: Table<Customer, number>;
   finances!: Table<Transaction, number>;
+  suppliers!: Table<Supplier, number>;
+  supplierTransactions!: Table<SupplierTransaction, number>;
+  orders!: Table<CustomerOrder, number>;
   settings!: Table<{ key: string; value: any }, string>;
 
   constructor() {
@@ -12,6 +22,21 @@ export class WMSDatabase extends Dexie {
       customers: '++id, firstName, lastName, city, created',
       finances: '++id, type, category, amount, date, customerId, timestamp',
       settings: 'key',
+    });
+    this.version(2).stores({
+      customers: '++id, firstName, lastName, city, created',
+      finances: '++id, type, category, amount, date, customerId, timestamp',
+      settings: 'key',
+      suppliers: '++id, name, created',
+      supplierTransactions: '++id, supplierId, type, amount, date, timestamp',
+    });
+    this.version(3).stores({
+      customers: '++id, firstName, lastName, city, created',
+      finances: '++id, type, category, amount, date, customerId, timestamp',
+      settings: 'key',
+      suppliers: '++id, name, created',
+      supplierTransactions: '++id, supplierId, type, amount, date, timestamp',
+      orders: '++id, orderNumber, customerId, status, orderDate, trackingNumber, timestamp',
     });
   }
 }
@@ -27,6 +52,7 @@ export const DEFAULT_SENDER_SETTINGS: SenderSettings = {
   currencySymbol: '€',
   companyVat: 'DE382910482',
   showCountryField: false,
+  enableDynamicTheme: true,
 };
 
 export async function getSenderSettings(): Promise<SenderSettings> {

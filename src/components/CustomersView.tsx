@@ -11,6 +11,7 @@ import {
   Phone,
   Building2,
   CheckCircle2,
+  Package,
 } from 'lucide-react';
 import type { Customer, Transaction } from '../types';
 
@@ -19,6 +20,7 @@ interface CustomersViewProps {
   transactions: Transaction[];
   onOpenCustomerModal: (customerToEdit?: Customer) => void;
   onOpenTransactionWithCustomer: (customerId: number) => void;
+  onOpenOrderWithCustomer?: (customerId: number) => void;
   onAddToPrintQueue: (customer: Customer) => void;
   onDeleteCustomer: (id: number) => Promise<void>;
   showCountryField?: boolean;
@@ -29,6 +31,7 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
   transactions,
   onOpenCustomerModal,
   onOpenTransactionWithCustomer,
+  onOpenOrderWithCustomer,
   onAddToPrintQueue,
   onDeleteCustomer,
   showCountryField = false,
@@ -296,6 +299,15 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="flex items-center justify-end gap-1">
+                              {onOpenOrderWithCustomer && (
+                                <button
+                                  onClick={() => c.id && onOpenOrderWithCustomer(c.id)}
+                                  title="Create Order for this customer"
+                                  className="p-1.5 text-slate-400 hover:text-purple-400 rounded-md hover:bg-slate-800 cursor-pointer"
+                                >
+                                  <Package className="w-3.5 h-3.5" />
+                                </button>
+                              )}
                               <button
                                 onClick={() => c.id && onOpenTransactionWithCustomer(c.id)}
                                 title="Record order / expense for this customer"

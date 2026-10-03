@@ -15,6 +15,7 @@ import {
   Trash2,
   ShieldAlert,
   Globe,
+  Palette,
 } from 'lucide-react';
 import type { Customer, Transaction, SenderSettings } from '../types';
 import { db } from '../db';
@@ -201,6 +202,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         if (parsed.finances.length > 0) {
           await db.finances.bulkAdd(parsed.finances);
         }
+        if (parsed.orders && parsed.orders.length > 0) {
+          await db.orders.bulkAdd(parsed.orders);
+        }
+        if (parsed.suppliers && parsed.suppliers.length > 0) {
+          await db.suppliers.bulkAdd(parsed.suppliers);
+        }
+        if (parsed.supplierTransactions && parsed.supplierTransactions.length > 0) {
+          await db.supplierTransactions.bulkAdd(parsed.supplierTransactions);
+        }
         if (parsed.senderSettings) {
           await onSaveSenderSettings(parsed.senderSettings);
           setFormSettings(parsed.senderSettings);
@@ -230,6 +240,9 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     try {
       await db.customers.clear();
       await db.finances.clear();
+      await db.suppliers.clear();
+      await db.supplierTransactions.clear();
+      await db.orders.clear();
       await onReloadData();
       setIsResetModalOpen(false);
       setConfirmCheck1(false);
@@ -381,6 +394,48 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   className="sr-only peer"
                 />
                 <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+              </label>
+            </div>
+          </div>
+
+          {/* Dynamic Financial Theme Preference */}
+          <div className="pt-3 border-t border-slate-800/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
+                  <Palette className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-white">
+                      Dynamic Financial Theme (Profit / Debt Mood Shift)
+                    </span>
+                    <span
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                        formSettings.enableDynamicTheme ?? true
+                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-slate-800 text-slate-400 border border-slate-700'
+                      }`}
+                    >
+                      {formSettings.enableDynamicTheme ?? true ? 'Active' : 'Disabled'}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
+                    Dynamically shifts application aura, top glow line, indicators, and accents in graded color levels (vibrant emerald for high profit down to crimson for heavy debt).
+                  </p>
+                </div>
+              </div>
+
+              <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={formSettings.enableDynamicTheme ?? true}
+                  onChange={(e) =>
+                    setFormSettings({ ...formSettings, enableDynamicTheme: e.target.checked })
+                  }
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
               </label>
             </div>
           </div>

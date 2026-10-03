@@ -59,9 +59,9 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
       }
     });
     return {
-      totalRevenue: rev || 14070,
-      totalCosts: costs || 8140,
-      marginPercent: rev > 0 ? ((rev - costs) / rev) * 100 : 42.1,
+      totalRevenue: rev,
+      totalCosts: costs,
+      marginPercent: rev > 0 ? ((rev - costs) / rev) * 100 : 0,
     };
   }, [transactions]);
 

@@ -9,7 +9,13 @@ import {
   Database,
   X,
   Boxes,
+  Truck,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle2,
+  Package,
 } from 'lucide-react';
+import type { FinancialHealthMetrics } from '../utils/financialTheme';
 
 interface SidebarProps {
   currentView: string;
@@ -18,6 +24,10 @@ interface SidebarProps {
   mobileOpen: boolean;
   onCloseMobile: () => void;
   activeCustomerCount: number;
+  supplierDebtCount?: number;
+  pendingOrdersCount?: number;
+  financialHealth?: FinancialHealthMetrics;
+  enableDynamicTheme?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -27,6 +37,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   mobileOpen,
   onCloseMobile,
   activeCustomerCount,
+  supplierDebtCount = 0,
+  pendingOrdersCount = 0,
+  financialHealth,
+  enableDynamicTheme = true,
 }) => {
   const navItems = [
     {
@@ -36,10 +50,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: null,
     },
     {
+      id: 'orders',
+      label: 'Customer Orders',
+      icon: Package,
+      badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} Due` : null,
+      badgeColor: 'bg-amber-600 text-white',
+    },
+    {
       id: 'customers',
       label: 'Customers',
       icon: Users,
       badge: activeCustomerCount > 0 ? String(activeCustomerCount) : null,
+    },
+    {
+      id: 'suppliers',
+      label: 'Suppliers Ledger',
+      icon: Truck,
+      badge: supplierDebtCount > 0 ? `${supplierDebtCount} Due` : null,
+      badgeColor: 'bg-rose-500 text-white',
     },
     {
       id: 'finances',
@@ -115,6 +143,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
+            const activeClass =
+              enableDynamicTheme && financialHealth
+                ? financialHealth.sidebarActive
+                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-xs';
+            const iconActiveClass =
+              enableDynamicTheme && financialHealth
+                ? financialHealth.textTone
+                : 'text-rose-500';
+
             return (
               <button
                 key={item.id}
@@ -122,16 +159,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onNavigate(item.id);
                   onCloseMobile();
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20 shadow-xs'
+                    ? activeClass
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
                     className={`w-4 h-4 ${
-                      isActive ? 'text-rose-500' : 'text-slate-500'
+                      isActive ? iconActiveClass : 'text-slate-500'
                     }`}
                   />
                   <span>{item.label}</span>
@@ -150,17 +187,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Bottom system footer */}
-        <div className="p-3 border-t border-slate-800/70">
-          <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 text-xs">
-            <div className="flex items-center justify-between text-slate-400 mb-1">
+        {/* Bottom system footer with Live Financial Pulse */}
+        <div className="p-3 border-t border-slate-800/70 space-y-2">
+          {enableDynamicTheme && financialHealth && (
+            <div
+              className={`p-2.5 rounded-lg border text-xs font-mono transition-all ${financialHealth.badgeClass}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1.5 font-bold font-sans text-[11px]">
+                  <span className={`w-2 h-2 rounded-full ${financialHealth.dotClass}`} />
+                  {financialHealth.label}
+                </span>
+                <span className="font-bold">
+                  {financialHealth.comprehensiveNet >= 0 ? '+' : ''}€
+                  {financialHealth.comprehensiveNet.toLocaleString(undefined, {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 0,
+                  })}
+                </span>
+              </div>
+              <div className="text-[10px] text-slate-400 font-sans mt-0.5 truncate">
+                {financialHealth.sublabel}
+              </div>
+            </div>
+          )}
+
+          <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800 text-xs">
+            <div className="flex items-center justify-between text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-emerald-400" />
-                <span>IndexedDB Engine</span>
+                <span className="text-[11px]">IndexedDB Core</span>
               </span>
               <span className="text-[10px] text-emerald-400 font-mono">ONLINE</span>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-slate-500 mt-1">
               Offline-ready storage & instant querying
             </p>
           </div>
