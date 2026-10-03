@@ -1,0 +1,6 @@
+{
+  "name": "Warehouse Command Center",
+  "description": "Comprehensive warehouse & operations management system with real-time financial tracking, customer profitability, advanced analytics, and multi-label A4 PDF printing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
