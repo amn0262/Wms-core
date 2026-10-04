@@ -9,7 +9,7 @@ interface ShipOrderModalProps {
   onSaveShipment: (orderId: number, carrier: CarrierType, trackingNumber: string, shippedDate: string) => Promise<void>;
 }
 
-const CARRIERS: CarrierType[] = ['DHL', 'DPD', 'UPS', 'GLS', 'Hermes', 'Spedition', 'Other'];
+const CARRIERS: CarrierType[] = ['DHL', 'DPD', 'Hermes', 'GLS', 'UPS', 'Other'];
 
 export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
   isOpen,

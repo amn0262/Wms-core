@@ -14,7 +14,7 @@ interface OrderModalProps {
   prefilledCustomerId?: number | null;
 }
 
-const CARRIERS: CarrierType[] = ['DHL', 'DPD', 'UPS', 'GLS', 'Hermes', 'Spedition', 'Other'];
+const CARRIERS: CarrierType[] = ['DHL', 'DPD', 'Hermes', 'GLS', 'UPS', 'Other'];
 const STATUSES: OrderStatus[] = ['Processing', 'Ready for Dispatch', 'Shipped', 'Delivered', 'Cancelled'];
 
 export const OrderModal: React.FC<OrderModalProps> = ({

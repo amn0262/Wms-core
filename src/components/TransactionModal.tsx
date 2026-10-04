@@ -147,7 +147,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 </>
               ) : (
                 <>
-                  <option value="Shipping">Shipping (DHL, DPD, UPS)</option>
+                  <option value="Shipping">Standard Local Shipping (DHL, DPD, Hermes, GLS, UPS)</option>
                   <option value="Goods/Inventory">Goods / Inventory Purchases</option>
                   <option value="Packaging & Supplies">Packaging & Supplies</option>
                   <option value="Vehicle">Vehicle & Fuel</option>

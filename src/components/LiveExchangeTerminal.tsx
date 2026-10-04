@@ -519,27 +519,29 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
               <div className="flex items-center gap-1.5 text-slate-300 font-bold">
                 <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                <span>WAREHOUSE BAYS LOAD</span>
+                <span>LIVE LEDGER SUMMARY</span>
               </div>
-              <span className="text-emerald-400 font-bold">78%</span>
+              <span className="text-emerald-400 font-bold">{transactions.length} RECORDS</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Bay A1 (Pallets)</div>
-                <div className="text-emerald-400 font-bold mt-0.5">88% Capacity</div>
+                <div className="text-slate-400">Total Revenue</div>
+                <div className="text-emerald-400 font-bold mt-0.5">€{totalRevenue.toFixed(2)}</div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Bay B2 (Apparel)</div>
-                <div className="text-sky-400 font-bold mt-0.5">74% Capacity</div>
+                <div className="text-slate-400">Total Costs</div>
+                <div className="text-rose-400 font-bold mt-0.5">€{totalCosts.toFixed(2)}</div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Bay C1 (Pack)</div>
-                <div className="text-amber-400 font-bold mt-0.5">62% Capacity</div>
+                <div className="text-slate-400">Operating Net</div>
+                <div className={`${totalRevenue - totalCosts >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold mt-0.5`}>
+                  €{(totalRevenue - totalCosts).toFixed(2)}
+                </div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Bay D4 (Staging)</div>
-                <div className="text-rose-400 font-bold mt-0.5">92% Capacity</div>
+                <div className="text-slate-400">Client Accounts</div>
+                <div className="text-sky-400 font-bold mt-0.5">{customers.length} Active</div>
               </div>
             </div>
           </div>
@@ -552,12 +554,12 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
       <div className="shrink-0 bg-[#080b10] border-t border-slate-800/80 px-4 py-2 flex items-center justify-between z-20 text-xs font-mono">
         <div className="flex items-center gap-3">
           <Truck className="w-4 h-4 text-sky-400 shrink-0" />
-          <span className="text-slate-400 hidden sm:inline">CARRIER DISPATCH:</span>
-          <span className="text-emerald-400 font-bold">DHL FREIGHT [ONLINE]</span>
+          <span className="text-slate-400 hidden sm:inline">LOCAL PARCEL CARRIERS:</span>
+          <span className="text-emerald-400 font-bold">DHL PAKET [LOCAL]</span>
           <span className="text-slate-600">·</span>
-          <span className="text-emerald-400 font-bold">DPD EXPRESS [ACTIVE]</span>
+          <span className="text-emerald-400 font-bold">DPD STANDARD [LOCAL]</span>
           <span className="text-slate-600">·</span>
-          <span className="text-emerald-400 font-bold">UPS CROSS-BORDER [ACTIVE]</span>
+          <span className="text-emerald-400 font-bold">HERMES / GLS / UPS [GROUND]</span>
         </div>
 
         <div className="flex items-center gap-4 text-slate-400 text-[11px]">

@@ -303,21 +303,20 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             </button>
           </div>
 
-          {/* Carrier Selector */}
+          {/* Local Carrier Selector */}
           <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-[11px]">Carrier:</span>
+            <span className="text-slate-400 text-[11px]">Local Carrier:</span>
             <select
               value={carrierFilter}
               onChange={(e) => setCarrierFilter(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none"
             >
-              <option value="ALL">All Carriers</option>
-              <option value="DHL">DHL</option>
-              <option value="DPD">DPD</option>
-              <option value="UPS">UPS</option>
-              <option value="GLS">GLS</option>
+              <option value="ALL">All Local Carriers</option>
+              <option value="DHL">DHL Paket</option>
+              <option value="DPD">DPD Standard</option>
               <option value="Hermes">Hermes</option>
-              <option value="Spedition">Spedition</option>
+              <option value="GLS">GLS</option>
+              <option value="UPS">UPS Standard</option>
               <option value="Other">Other</option>
             </select>
           </div>

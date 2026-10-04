@@ -91,7 +91,7 @@ export interface SupplierTransaction {
 // ==========================================
 export type OrderStatus = 'Processing' | 'Ready for Dispatch' | 'Shipped' | 'Delivered' | 'Cancelled';
 
-export type CarrierType = 'DHL' | 'DPD' | 'UPS' | 'GLS' | 'Hermes' | 'Spedition' | 'Other';
+export type CarrierType = 'DHL' | 'DPD' | 'Hermes' | 'GLS' | 'UPS' | 'Other';
 
 export interface CustomerOrder {
   id?: number;
