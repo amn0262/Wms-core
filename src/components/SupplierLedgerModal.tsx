@@ -12,6 +12,7 @@ import {
   Mail,
   AlertCircle,
   CheckCircle2,
+  Edit2,
 } from 'lucide-react';
 import type { Supplier, SupplierTransaction } from '../types';
 
@@ -21,6 +22,7 @@ interface SupplierLedgerModalProps {
   supplier: Supplier | null;
   transactions: SupplierTransaction[];
   onOpenNewTransaction: (supplierId: number, defaultType: 'Bill' | 'Payment', suggestedAmount?: number) => void;
+  onEditTransaction?: (tx: SupplierTransaction) => void;
   onDeleteTransaction: (id: number) => Promise<void>;
 }
 
@@ -30,6 +32,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
   supplier,
   transactions,
   onOpenNewTransaction,
+  onEditTransaction,
   onDeleteTransaction,
 }) => {
   if (!isOpen || !supplier) return null;
@@ -360,17 +363,28 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <button
-                            onClick={() => {
-                              if (item.id && window.confirm('Delete this ledger entry?')) {
-                                onDeleteTransaction(item.id);
-                              }
-                            }}
-                            title="Delete entry"
-                            className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          <div className="flex items-center justify-center gap-1">
+                            {onEditTransaction && (
+                              <button
+                                onClick={() => onEditTransaction(item)}
+                                title="Edit entry"
+                                className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (item.id && window.confirm('Delete this ledger entry?')) {
+                                  onDeleteTransaction(item.id);
+                                }
+                              }}
+                              title="Delete entry"
+                              className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

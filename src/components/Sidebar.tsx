@@ -71,7 +71,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'finances',
-      label: 'Income & Expenses',
+      label: 'Operations & Ledger',
       icon: Receipt,
       badge: null,
     },

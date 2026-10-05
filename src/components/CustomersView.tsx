@@ -12,15 +12,19 @@ import {
   Building2,
   CheckCircle2,
   Package,
+  Truck,
 } from 'lucide-react';
-import type { Customer, Transaction } from '../types';
+import type { Customer, Transaction, CustomerOrder } from '../types';
 
 interface CustomersViewProps {
   customers: Customer[];
   transactions: Transaction[];
+  orders?: CustomerOrder[];
   onOpenCustomerModal: (customerToEdit?: Customer) => void;
   onOpenTransactionWithCustomer: (customerId: number) => void;
   onOpenOrderWithCustomer?: (customerId: number) => void;
+  onEditOrder?: (order: CustomerOrder) => void;
+  onEditTransaction?: (tx: Transaction) => void;
   onAddToPrintQueue: (customer: Customer) => void;
   onDeleteCustomer: (id: number) => Promise<void>;
   showCountryField?: boolean;
@@ -29,9 +33,12 @@ interface CustomersViewProps {
 export const CustomersView: React.FC<CustomersViewProps> = ({
   customers,
   transactions,
+  orders = [],
   onOpenCustomerModal,
   onOpenTransactionWithCustomer,
   onOpenOrderWithCustomer,
+  onEditOrder,
+  onEditTransaction,
   onAddToPrintQueue,
   onDeleteCustomer,
   showCountryField = false,
@@ -450,25 +457,92 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
               </div>
             </div>
 
+            {/* Linked Customer Orders & Shipments */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-sky-400" />
+                  Customer Orders & Status
+                </h4>
+                {onOpenOrderWithCustomer && selectedCustomer.id && (
+                  <button
+                    onClick={() => onOpenOrderWithCustomer(selectedCustomer.id!)}
+                    className="text-xs font-medium text-sky-400 hover:text-sky-300 cursor-pointer"
+                  >
+                    + New Order
+                  </button>
+                )}
+              </div>
+
+              {orders.filter((o) => o.customerId === selectedCustomer.id).length === 0 ? (
+                <p className="text-xs text-slate-500 py-2">No orders recorded for this client.</p>
+              ) : (
+                <div className="space-y-2 max-h-44 overflow-y-auto pr-1 mb-4">
+                  {orders
+                    .filter((o) => o.customerId === selectedCustomer.id)
+                    .map((ord) => (
+                      <div
+                        key={ord.id}
+                        className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs"
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-bold text-white">
+                              {ord.orderNumber}
+                            </span>
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-800 text-sky-300 border border-slate-700">
+                              {ord.status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate max-w-[170px] mt-0.5">
+                            {ord.itemsDescription}
+                          </div>
+                          {ord.trackingNumber && (
+                            <div className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 mt-0.5">
+                              <Truck className="w-3 h-3" />
+                              {ord.carrier || 'DHL'}: {ord.trackingNumber}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-emerald-400">
+                            €{Number(ord.amount).toFixed(2)}
+                          </span>
+                          {onEditOrder && (
+                            <button
+                              onClick={() => onEditOrder(ord)}
+                              title="Edit order & status"
+                              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+
             {/* Linked Transaction Log */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
-                  Transaction History
+                  Financial & Local Shipping History
                 </h4>
                 <button
                   onClick={() =>
                     selectedCustomer.id &&
                     onOpenTransactionWithCustomer(selectedCustomer.id)
                   }
-                  className="text-xs font-medium text-rose-400 hover:text-rose-300"
+                  className="text-xs font-medium text-rose-400 hover:text-rose-300 cursor-pointer"
                 >
                   + Add Entry
                 </button>
               </div>
 
               {!selectedStats || selectedStats.history.length === 0 ? (
-                <p className="text-xs text-slate-500 py-3">No orders or shipments recorded.</p>
+                <p className="text-xs text-slate-500 py-3">No financial records recorded.</p>
               ) : (
                 <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                   {selectedStats.history.map((h) => {
@@ -479,19 +553,30 @@ export const CustomersView: React.FC<CustomersViewProps> = ({
                         className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 flex items-center justify-between text-xs"
                       >
                         <div>
-                          <div className="text-slate-300 font-medium truncate max-w-[160px]">
+                          <div className="text-slate-300 font-medium truncate max-w-[155px]">
                             {h.description}
                           </div>
                           <div className="text-[10px] text-slate-500 font-mono">
-                            {h.date} · {h.category}
+                            {h.date} · {h.category === 'Shipping' ? 'Local Shipping' : h.category}
                           </div>
                         </div>
-                        <div
-                          className={`font-mono font-bold tabular-nums ${
-                            isInc ? 'text-emerald-400' : 'text-rose-400'
-                          }`}
-                        >
-                          {isInc ? '+' : '-'}€{h.amount.toFixed(2)}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`font-mono font-bold tabular-nums ${
+                              isInc ? 'text-emerald-400' : 'text-rose-400'
+                            }`}
+                          >
+                            {isInc ? '+' : '-'}€{h.amount.toFixed(2)}
+                          </span>
+                          {onEditTransaction && (
+                            <button
+                              onClick={() => onEditTransaction(h)}
+                              title="Edit entry"
+                              className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     );

@@ -11,10 +11,9 @@ import {
   Edit2,
   Trash2,
   Printer,
-  ArrowUpRight,
   TrendingUp,
-  AlertCircle,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import type { Customer, CustomerOrder, OrderStatus, CarrierType } from '../types';
 import { ShipOrderModal } from './ShipOrderModal';
@@ -23,11 +22,24 @@ interface OrdersViewProps {
   orders: CustomerOrder[];
   customers: Customer[];
   onOpenOrderModal: (orderToEdit?: CustomerOrder, prefilledCustomerId?: number) => void;
-  onSaveShipment: (orderId: number, carrier: CarrierType, trackingNumber: string, shippedDate: string) => Promise<void>;
+  onSaveShipment: (
+    orderId: number,
+    carrier: CarrierType,
+    trackingNumber: string,
+    shippedDate: string
+  ) => Promise<void>;
   onUpdateOrderStatus: (orderId: number, status: OrderStatus) => Promise<void>;
   onDeleteOrder: (id: number) => Promise<void>;
   onAddToPrintQueue: (customer: Customer) => void;
 }
+
+const ALL_STATUSES: OrderStatus[] = [
+  'Processing',
+  'Ready for Dispatch',
+  'Shipped',
+  'Delivered',
+  'Cancelled',
+];
 
 export const OrdersView: React.FC<OrdersViewProps> = ({
   orders,
@@ -38,9 +50,15 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   onDeleteOrder,
   onAddToPrintQueue,
 }) => {
+  const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'PENDING' | 'SHIPPED' | 'DELIVERED'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<
+    'ALL' | 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  >('ALL');
   const [carrierFilter, setCarrierFilter] = useState<string>('ALL');
+  const [customerFilter, setCustomerFilter] = useState<string>('ALL');
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
   const [activeShipModalOrder, setActiveShipModalOrder] = useState<CustomerOrder | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
@@ -59,20 +77,26 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     let pendingCount = 0;
     let shippedCount = 0;
     let deliveredCount = 0;
+    let cancelledCount = 0;
 
     orders.forEach((o) => {
-      totalValue += Number(o.amount) || 0;
+      if (o.status !== 'Cancelled') {
+        totalValue += Number(o.amount) || 0;
+      }
       if (o.status === 'Processing' || o.status === 'Ready for Dispatch') {
         pendingCount += 1;
       } else if (o.status === 'Shipped') {
         shippedCount += 1;
       } else if (o.status === 'Delivered') {
         deliveredCount += 1;
+      } else if (o.status === 'Cancelled') {
+        cancelledCount += 1;
       }
     });
 
     const fulfilledCount = shippedCount + deliveredCount;
-    const fulfillmentRate = orders.length > 0 ? (fulfilledCount / orders.length) * 100 : 0;
+    const activeTotal = Math.max(orders.length - cancelledCount, 1);
+    const fulfillmentRate = orders.length > 0 ? (fulfilledCount / activeTotal) * 100 : 0;
 
     return {
       totalOrders: orders.length,
@@ -80,46 +104,147 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
       pendingCount,
       shippedCount,
       deliveredCount,
+      cancelledCount,
       fulfillmentRate,
     };
   }, [orders]);
+
+  // Orders & Shipments Trend Chart Data
+  const trendData = useMemo(() => {
+    const dateMap: Record<
+      string,
+      {
+        rawDate: string;
+        label: string;
+        totalAmount: number;
+        shippedAmount: number;
+        orderCount: number;
+        shippedCount: number;
+      }
+    > = {};
+
+    orders.forEach((o) => {
+      const dStr = o.orderDate;
+      const d = new Date(dStr);
+      const label = isNaN(d.getTime()) ? dStr : `${d.getMonth() + 1}/${d.getDate()}`;
+      if (!dateMap[dStr]) {
+        dateMap[dStr] = {
+          rawDate: dStr,
+          label,
+          totalAmount: 0,
+          shippedAmount: 0,
+          orderCount: 0,
+          shippedCount: 0,
+        };
+      }
+      const amt = Number(o.amount) || 0;
+      dateMap[dStr].orderCount += 1;
+      dateMap[dStr].totalAmount += amt;
+      if (o.status === 'Shipped' || o.status === 'Delivered') {
+        dateMap[dStr].shippedCount += 1;
+        dateMap[dStr].shippedAmount += amt;
+      }
+    });
+
+    const sorted = Object.values(dateMap).sort(
+      (a, b) => new Date(a.rawDate).getTime() - new Date(b.rawDate).getTime()
+    );
+    const sliceCount = chartRange === '30D' ? 8 : chartRange === '90D' ? 12 : 18;
+    const recent = sorted.slice(-sliceCount);
+
+    if (recent.length === 0) {
+      return [
+        { rawDate: '-', label: 'D1', totalAmount: 0, shippedAmount: 0, orderCount: 0, shippedCount: 0 },
+        { rawDate: '-', label: 'D2', totalAmount: 0, shippedAmount: 0, orderCount: 0, shippedCount: 0 },
+      ];
+    }
+    return recent;
+  }, [orders, chartRange]);
+
+  const chartW = 680;
+  const chartH = 145;
+  const padX = 44;
+  const padY = 24;
+  const maxTrendVal = Math.max(
+    ...trendData.map((d) => Math.max(d.totalAmount, d.shippedAmount)),
+    100
+  );
+
+  const ptsTotal = trendData.map((d, i) => {
+    const x = padX + (i * (chartW - padX * 2)) / Math.max(trendData.length - 1, 1);
+    const y = chartH - padY - (d.totalAmount / maxTrendVal) * (chartH - padY * 2);
+    return { x, y, val: d.totalAmount, label: d.label, count: d.orderCount };
+  });
+
+  const ptsShipped = trendData.map((d, i) => {
+    const x = padX + (i * (chartW - padX * 2)) / Math.max(trendData.length - 1, 1);
+    const y = chartH - padY - (d.shippedAmount / maxTrendVal) * (chartH - padY * 2);
+    return { x, y, val: d.shippedAmount, label: d.label, count: d.shippedCount };
+  });
+
+  const pathTotal = ptsTotal.length
+    ? `M ${ptsTotal.map((p) => `${p.x} ${p.y}`).join(' L ')}`
+    : '';
+  const pathShipped = ptsShipped.length
+    ? `M ${ptsShipped.map((p) => `${p.x} ${p.y}`).join(' L ')}`
+    : '';
 
   // Filtered Orders
   const filteredOrders = useMemo(() => {
     return orders
       .filter((o) => {
-        const query = searchTerm.toLowerCase();
-        const customer = customerMap[o.customerId];
-        const custName = customer
-          ? `${customer.firstName} ${customer.lastName} ${customer.company || ''}`.toLowerCase()
-          : (o.customerName || '').toLowerCase();
-
-        const matchesQuery =
-          o.orderNumber.toLowerCase().includes(query) ||
-          custName.includes(query) ||
-          (o.trackingNumber && o.trackingNumber.toLowerCase().includes(query)) ||
-          o.itemsDescription.toLowerCase().includes(query);
-
-        if (!matchesQuery) return false;
-
+        if (customerFilter !== 'ALL' && String(o.customerId) !== customerFilter) {
+          return false;
+        }
         if (carrierFilter !== 'ALL' && o.carrier !== carrierFilter) {
           return false;
         }
+        if (startDate && new Date(o.orderDate) < new Date(startDate)) return false;
+        if (endDate && new Date(o.orderDate) > new Date(endDate)) return false;
 
         if (statusFilter === 'PENDING') {
-          return o.status === 'Processing' || o.status === 'Ready for Dispatch';
+          if (o.status !== 'Processing' && o.status !== 'Ready for Dispatch') return false;
+        } else if (statusFilter === 'SHIPPED') {
+          if (o.status !== 'Shipped') return false;
+        } else if (statusFilter === 'DELIVERED') {
+          if (o.status !== 'Delivered') return false;
+        } else if (statusFilter === 'CANCELLED') {
+          if (o.status !== 'Cancelled') return false;
         }
-        if (statusFilter === 'SHIPPED') {
-          return o.status === 'Shipped';
-        }
-        if (statusFilter === 'DELIVERED') {
-          return o.status === 'Delivered';
+
+        if (searchTerm.trim()) {
+          const query = searchTerm.toLowerCase();
+          const customer = customerMap[o.customerId];
+          const custName = customer
+            ? `${customer.firstName} ${customer.lastName} ${customer.company || ''}`.toLowerCase()
+            : (o.customerName || '').toLowerCase();
+
+          const matchesQuery =
+            o.orderNumber.toLowerCase().includes(query) ||
+            custName.includes(query) ||
+            (o.trackingNumber && o.trackingNumber.toLowerCase().includes(query)) ||
+            o.itemsDescription.toLowerCase().includes(query);
+
+          if (!matchesQuery) return false;
         }
 
         return true;
       })
-      .sort((a, b) => b.timestamp - a.timestamp);
-  }, [orders, searchTerm, statusFilter, carrierFilter, customerMap]);
+      .sort(
+        (a, b) =>
+          new Date(b.orderDate).getTime() - new Date(a.orderDate).getTime() ||
+          b.timestamp - a.timestamp
+      );
+  }, [
+    orders,
+    searchTerm,
+    statusFilter,
+    carrierFilter,
+    customerFilter,
+    startDate,
+    endDate,
+    customerMap,
+  ]);
 
   // Helper: Carrier Live Tracking URL
   const getCarrierTrackingUrl = (carrier?: CarrierType, tracking?: string) => {
@@ -151,7 +276,6 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     <div className="space-y-6">
       {/* 1. TOP STATS STRIP */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Orders & Revenue */}
         <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
@@ -170,7 +294,6 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           </p>
         </div>
 
-        {/* Shipped & In Transit */}
         <div className="p-5 rounded-xl bg-[#141820] border border-emerald-900/40 shadow-xs">
           <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
@@ -185,11 +308,10 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             {stats.shippedCount} <span className="text-sm font-normal text-slate-400">Shipments</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Packages with carrier tracking numbers handed over to freight
+            Parcels dispatched via standard local carriers (DHL, DPD, Hermes, GLS, UPS)
           </p>
         </div>
 
-        {/* Pending & Ready for Dispatch */}
         <div className="p-5 rounded-xl bg-[#141820] border border-amber-900/40 shadow-xs">
           <div className="flex items-center justify-between text-xs text-amber-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
@@ -204,11 +326,10 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             {stats.pendingCount} <span className="text-sm font-normal text-slate-400">Orders</span>
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Orders currently in processing or packing on high-bay staging racks
+            Orders currently in processing or packing on staging racks
           </p>
         </div>
 
-        {/* Fulfillment Rate */}
         <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
@@ -231,22 +352,161 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         </div>
       </div>
 
-      {/* 2. CONTROLS, SEARCH & ACTIONS */}
+      {/* 2. ORDERS & SHIPMENTS TIMELINE TREND CHART */}
+      <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-sky-400" />
+              <h3 className="text-sm font-semibold text-white">
+                Customer Orders & Local Shipments Timeline Trend
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-0.5">
+              Total order volume (€) vs dispatched/shipped orders (€) over time
+            </p>
+          </div>
+          <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
+            {(['30D', '90D', 'ALL'] as const).map((r) => (
+              <button
+                key={r}
+                onClick={() => setChartRange(r)}
+                className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
+                  chartRange === r
+                    ? 'bg-sky-600 text-white'
+                    : 'text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="w-full overflow-x-auto">
+          <svg
+            viewBox={`0 0 ${chartW} ${chartH}`}
+            className="w-full h-36 text-slate-600 overflow-visible"
+          >
+            {[0.25, 0.5, 0.75, 1.0].map((frac, idx) => {
+              const y = chartH - padY - frac * (chartH - padY * 2);
+              return (
+                <g key={idx}>
+                  <line
+                    x1={padX}
+                    y1={y}
+                    x2={chartW - padX}
+                    y2={y}
+                    stroke="#1e293b"
+                    strokeWidth="1"
+                    strokeDasharray="3 3"
+                  />
+                  <text
+                    x={padX - 6}
+                    y={y + 3}
+                    fill="#64748b"
+                    fontSize="9"
+                    textAnchor="end"
+                    className="font-mono"
+                  >
+                    €{Math.round(maxTrendVal * frac)}
+                  </text>
+                </g>
+              );
+            })}
+            <line
+              x1={padX}
+              y1={chartH - padY}
+              x2={chartW - padX}
+              y2={chartH - padY}
+              stroke="#334155"
+              strokeWidth="1"
+            />
+            {pathTotal && (
+              <path
+                d={pathTotal}
+                fill="none"
+                stroke="#0ea5e9"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            )}
+            {pathShipped && (
+              <path
+                d={pathShipped}
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeDasharray="4 2"
+              />
+            )}
+            {ptsTotal.map((p, idx) => (
+              <g key={`ot-${idx}`}>
+                <circle cx={p.x} cy={p.y} r="3.5" fill="#0ea5e9" />
+                <text
+                  x={p.x}
+                  y={p.y - 6}
+                  fill="#38bdf8"
+                  fontSize="8.5"
+                  textAnchor="middle"
+                  className="font-mono"
+                >
+                  {p.count} ord
+                </text>
+                <text
+                  x={p.x}
+                  y={chartH - 5}
+                  fill="#64748b"
+                  fontSize="9"
+                  textAnchor="middle"
+                  className="font-mono"
+                >
+                  {p.label}
+                </text>
+              </g>
+            ))}
+            {ptsShipped.map((p, idx) => (
+              <circle key={`os-${idx}`} cx={p.x} cy={p.y} r="3" fill="#10b981" />
+            ))}
+          </svg>
+        </div>
+
+        <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+          <div className="flex items-center gap-5">
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-0.5 bg-sky-500 rounded-full" />
+              <span className="text-slate-300">Total Orders Volume (€{stats.totalValue.toFixed(2)})</span>
+            </span>
+            <span className="flex items-center gap-2">
+              <span className="w-3 h-0.5 bg-emerald-500 rounded-full border-t border-dashed" />
+              <span className="text-slate-300">
+                Dispatched & Delivered ({stats.shippedCount + stats.deliveredCount} orders)
+              </span>
+            </span>
+          </div>
+          <span className="font-mono text-sky-400 font-semibold">
+            Showing {filteredOrders.length} of {orders.length} Orders
+          </span>
+        </div>
+      </div>
+
+      {/* 3. CONTROLS, ADVANCED FILTERS & ACTIONS */}
       <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-4">
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-          {/* Search bar */}
           <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by order #, customer name, carrier tracking number, or item..."
+              placeholder="Search by order #, customer name, local carrier tracking #, or item..."
               className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
 
-          {/* Action button */}
           <button
             onClick={() => onOpenOrderModal()}
             className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
@@ -256,11 +516,11 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           </button>
         </div>
 
-        {/* Filters */}
+        {/* Multi-Variable Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
           {/* Status Tabs */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-medium mr-1 text-[11px]">Status:</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="text-slate-400 font-medium mr-1 text-[11px]">Order Status:</span>
             <button
               onClick={() => setStatusFilter('ALL')}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
@@ -269,7 +529,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              All Orders ({orders.length})
+              All ({orders.length})
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
@@ -279,7 +539,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Pending Dispatch ({stats.pendingCount})
+              Pending ({stats.pendingCount})
             </button>
             <button
               onClick={() => setStatusFilter('SHIPPED')}
@@ -289,13 +549,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Shipped / In Transit ({stats.shippedCount})
+              Shipped ({stats.shippedCount})
             </button>
             <button
               onClick={() => setStatusFilter('DELIVERED')}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
                 statusFilter === 'DELIVERED'
-                  ? 'bg-slate-700 text-white'
+                  ? 'bg-sky-600 text-white'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -303,9 +563,21 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             </button>
           </div>
 
-          {/* Local Carrier Selector */}
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-[11px]">Local Carrier:</span>
+          {/* Client, Carrier & Date Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={customerFilter}
+              onChange={(e) => setCustomerFilter(e.target.value)}
+              className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none"
+            >
+              <option value="ALL">All Customers</option>
+              {customers.map((c) => (
+                <option key={c.id} value={String(c.id)}>
+                  {c.firstName} {c.lastName}
+                </option>
+              ))}
+            </select>
+
             <select
               value={carrierFilter}
               onChange={(e) => setCarrierFilter(e.target.value)}
@@ -319,19 +591,53 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               <option value="UPS">UPS Standard</option>
               <option value="Other">Other</option>
             </select>
+
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              title="From Date"
+              className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white font-mono"
+            />
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              title="To Date"
+              className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white font-mono"
+            />
+
+            {(statusFilter !== 'ALL' ||
+              carrierFilter !== 'ALL' ||
+              customerFilter !== 'ALL' ||
+              startDate ||
+              endDate ||
+              searchTerm) && (
+              <button
+                onClick={() => {
+                  setStatusFilter('ALL');
+                  setCarrierFilter('ALL');
+                  setCustomerFilter('ALL');
+                  setStartDate('');
+                  setEndDate('');
+                  setSearchTerm('');
+                }}
+                className="text-slate-400 hover:text-white flex items-center gap-1 px-2 py-1 cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" /> Reset
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 3. ORDERS TABLE */}
+      {/* 4. ORDERS TABLE (WITH INLINE ORDER STATUS SELECTOR & FULL EDIT/DELETE) */}
       {filteredOrders.length === 0 ? (
         <div className="p-12 text-center rounded-xl bg-[#141820] border border-slate-800 text-slate-400 space-y-3">
           <Package className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-sm font-semibold text-slate-200">No Orders Found</h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            {searchTerm || statusFilter !== 'ALL' || carrierFilter !== 'ALL'
-              ? 'No orders match your current search filters. Try clearing your query.'
-              : 'Create customer orders to track fulfillment status, assign carrier tracking numbers (DHL, DPD, UPS), and link shipments directly to customer accounts.'}
+            Create customer orders to track fulfillment status, assign local carrier tracking numbers (DHL, DPD, Hermes, GLS, UPS), and link shipments directly to customer accounts.
           </p>
           <button
             onClick={() => onOpenOrderModal()}
@@ -350,8 +656,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 <th className="py-3.5 px-4">Customer Account</th>
                 <th className="py-3.5 px-4">Goods & Items</th>
                 <th className="py-3.5 px-4 text-right">Value (€)</th>
-                <th className="py-3.5 px-4 text-center">Status</th>
-                <th className="py-3.5 px-4">Carrier & Tracking #</th>
+                <th className="py-3.5 px-4 text-center">Order Status (Quick Change)</th>
+                <th className="py-3.5 px-4">Local Carrier & Tracking #</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -360,7 +666,6 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 const customer = customerMap[order.customerId];
                 const isShipped = order.status === 'Shipped';
                 const isDelivered = order.status === 'Delivered';
-                const isPending = order.status === 'Processing' || order.status === 'Ready for Dispatch';
                 const hasTracking = !!order.trackingNumber;
 
                 return (
@@ -383,22 +688,32 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                             {customer.firstName} {customer.lastName}
                           </div>
                           <div className="text-[11px] text-slate-500 flex items-center gap-1.5 mt-0.5">
-                            {customer.company && <span className="text-slate-400">{customer.company} ·</span>}
+                            {customer.company && (
+                              <span className="text-slate-400">{customer.company} ·</span>
+                            )}
                             <span>{customer.city}</span>
                           </div>
                         </div>
                       ) : (
-                        <span className="text-slate-400">{order.customerName || 'Customer ID #' + order.customerId}</span>
+                        <span className="text-slate-400">
+                          {order.customerName || 'Customer ID #' + order.customerId}
+                        </span>
                       )}
                     </td>
 
                     {/* Items */}
                     <td className="py-3.5 px-4">
-                      <div className="font-medium text-slate-300 max-w-xs truncate" title={order.itemsDescription}>
+                      <div
+                        className="font-medium text-slate-300 max-w-xs truncate"
+                        title={order.itemsDescription}
+                      >
                         {order.itemsDescription}
                       </div>
                       {order.notes && (
-                        <div className="text-[10px] text-slate-500 truncate max-w-xs mt-0.5" title={order.notes}>
+                        <div
+                          className="text-[10px] text-slate-500 truncate max-w-xs mt-0.5"
+                          title={order.notes}
+                        >
                           Note: {order.notes}
                         </div>
                       )}
@@ -406,28 +721,39 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
                     {/* Value */}
                     <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
-                      €{(Number(order.amount) || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      €
+                      {(Number(order.amount) || 0).toLocaleString(undefined, {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </td>
 
-                    {/* Status Badge */}
+                    {/* Interactive Status Selector + Badge */}
                     <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                      {isShipped ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                          <Truck className="w-3 h-3" /> Shipped
-                        </span>
-                      ) : isDelivered ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-600/20 text-emerald-300 border border-emerald-500/40">
-                          <CheckCircle2 className="w-3 h-3" /> Delivered
-                        </span>
-                      ) : order.status === 'Ready for Dispatch' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                          <Clock className="w-3 h-3" /> Ready to Ship
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30">
-                          <Clock className="w-3 h-3" /> Processing
-                        </span>
-                      )}
+                      <select
+                        value={order.status}
+                        onChange={(e) =>
+                          order.id &&
+                          onUpdateOrderStatus(order.id, e.target.value as OrderStatus)
+                        }
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border focus:outline-none cursor-pointer ${
+                          isShipped
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : isDelivered
+                            ? 'bg-emerald-600/20 text-emerald-200 border-emerald-500/40'
+                            : order.status === 'Ready for Dispatch'
+                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                            : order.status === 'Cancelled'
+                            ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                            : 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+                        }`}
+                      >
+                        {ALL_STATUSES.map((st) => (
+                          <option key={st} value={st} className="bg-slate-900 text-white">
+                            {st}
+                          </option>
+                        ))}
+                      </select>
                     </td>
 
                     {/* Carrier & Tracking # */}
@@ -443,9 +769,10 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-[11px]">
-                            {/* Copy button */}
                             <button
-                              onClick={() => handleCopyTracking(order.trackingNumber!, `track-${order.id}`)}
+                              onClick={() =>
+                                handleCopyTracking(order.trackingNumber!, `track-${order.id}`)
+                              }
                               className="text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
                               title="Copy tracking code"
                             >
@@ -460,13 +787,12 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                               )}
                             </button>
 
-                            {/* Direct Tracking Portal Link */}
                             <a
                               href={getCarrierTrackingUrl(order.carrier, order.trackingNumber)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sky-400 hover:text-sky-300 flex items-center gap-0.5 transition-colors"
-                              title="Trace on Carrier Portal"
+                              title="Trace on Local Carrier Portal"
                             >
                               <span>Trace</span>
                               <ExternalLink className="w-3 h-3" />
@@ -487,18 +813,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                     {/* Actions */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
-                        {/* Quick Ship button */}
                         {!isShipped && !isDelivered && (
                           <button
                             onClick={() => setActiveShipModalOrder(order)}
-                            title="Mark as Shipped with Tracking Number"
+                            title="Mark as Shipped with Local Tracking Number"
                             className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition-colors cursor-pointer"
                           >
                             Mark Shipped
                           </button>
                         )}
 
-                        {/* Add to Print Queue */}
                         {customer && (
                           <button
                             onClick={() => onAddToPrintQueue(customer)}
@@ -509,19 +833,20 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                           </button>
                         )}
 
-                        {/* Edit */}
                         <button
                           onClick={() => onOpenOrderModal(order)}
-                          title="Edit order"
+                          title="Edit order & status"
                           className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                         </button>
 
-                        {/* Delete */}
                         <button
                           onClick={() => {
-                            if (order.id && window.confirm(`Delete order "${order.orderNumber}"?`)) {
+                            if (
+                              order.id &&
+                              window.confirm(`Delete order "${order.orderNumber}"?`)
+                            ) {
                               onDeleteOrder(order.id);
                             }
                           }}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import type {
   Customer,
   Transaction,
+  TransactionCategory,
   PrintQueueItem,
   SenderSettings,
   Supplier,
@@ -48,26 +49,31 @@ export default function App() {
   const [printQueue, setPrintQueue] = useState<PrintQueueItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Customer Modals
+  // Transaction Modal State (Create & Edit with Dynamic Category)
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [transactionPrefillCustomerId, setTransactionPrefillCustomerId] = useState<number | null>(null);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [defaultTransactionCategory, setDefaultTransactionCategory] = useState<TransactionCategory | null>(null);
 
+  // Customer Modal State
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
 
-  // Order Modals
+  // Order Modal State
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<CustomerOrder | null>(null);
   const [orderPrefillCustomerId, setOrderPrefillCustomerId] = useState<number | null>(null);
 
-  // Supplier Modals
+  // Supplier Modal State
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
+  // Supplier Transaction Modal State (Create & Edit)
   const [isSupplierTransactionModalOpen, setIsSupplierTransactionModalOpen] = useState(false);
   const [supplierTxPrefillId, setSupplierTxPrefillId] = useState<number | null>(null);
   const [supplierTxDefaultType, setSupplierTxDefaultType] = useState<SupplierTransactionType>('Bill');
   const [supplierTxSuggestedAmount, setSupplierTxSuggestedAmount] = useState<number | undefined>(undefined);
+  const [editingSupplierTransaction, setEditingSupplierTransaction] = useState<SupplierTransaction | null>(null);
 
   // Load all data from Dexie
   const loadAllData = useCallback(async () => {
@@ -123,16 +129,27 @@ export default function App() {
     ).length;
   }, [orders]);
 
-  // Transaction Actions (Customers/General)
+  // Transaction Actions (Create & Edit)
   const handleSaveTransaction = async (
-    data: Omit<Transaction, 'id' | 'timestamp'>
+    data: Omit<Transaction, 'id' | 'timestamp'> & { id?: number }
   ) => {
-    const newTx: Transaction = {
-      ...data,
-      timestamp: Date.now(),
-    };
-    const id = await db.finances.add(newTx);
-    setTransactions((prev) => [{ ...newTx, id }, ...prev]);
+    if (data.id) {
+      const existing = transactions.find((t) => t.id === data.id);
+      const updated: Transaction = {
+        ...data,
+        id: data.id,
+        timestamp: existing?.timestamp || Date.now(),
+      };
+      await db.finances.put(updated);
+      setTransactions((prev) => prev.map((t) => (t.id === data.id ? updated : t)));
+    } else {
+      const newTx: Transaction = {
+        ...data,
+        timestamp: Date.now(),
+      };
+      const id = await db.finances.add(newTx);
+      setTransactions((prev) => [{ ...newTx, id }, ...prev]);
+    }
   };
 
   const handleDeleteTransaction = async (id: number) => {
@@ -174,39 +191,60 @@ export default function App() {
     setPrintQueue((prev) => prev.filter((item) => item.customer.id !== id));
   };
 
-  // Order Actions
+  // Order Actions (Create, Edit, Status Update & Sync with Financial Ledger)
   const handleSaveOrder = async (
     data: Omit<CustomerOrder, 'id' | 'timestamp'> & { id?: number },
     syncToFinances: boolean
   ) => {
-    let financeId = data.financeTransactionId;
-
-    if (syncToFinances && data.amount > 0) {
-      const revenueTx: Transaction = {
-        type: 'Income',
-        category: 'Order Revenue',
-        amount: data.amount,
-        date: data.orderDate,
-        description: `Order ${data.orderNumber}: ${data.itemsDescription}`,
-        customerId: data.customerId,
-        invoiceNumber: data.orderNumber,
-        timestamp: Date.now(),
-      };
-      financeId = await db.finances.add(revenueTx);
-      setTransactions((prev) => [{ ...revenueTx, id: financeId }, ...prev]);
-    }
-
     if (data.id) {
       const existing = orders.find((o) => o.id === data.id);
+      const linkedFinId = data.financeTransactionId || existing?.financeTransactionId;
+
+      // If order has a linked financial transaction, keep it synchronized
+      if (linkedFinId) {
+        const existingFin = transactions.find((t) => t.id === linkedFinId);
+        if (existingFin) {
+          const updatedFin: Transaction = {
+            ...existingFin,
+            amount: data.amount,
+            date: data.orderDate,
+            description: `Order ${data.orderNumber}: ${data.itemsDescription}`,
+            customerId: data.customerId,
+            invoiceNumber: data.orderNumber,
+          };
+          await db.finances.put(updatedFin);
+          setTransactions((prev) =>
+            prev.map((t) => (t.id === linkedFinId ? updatedFin : t))
+          );
+        }
+      }
+
       const updated: CustomerOrder = {
         ...data,
         id: data.id,
-        financeTransactionId: financeId || existing?.financeTransactionId,
+        financeTransactionId: linkedFinId,
         timestamp: existing?.timestamp || Date.now(),
       };
       await db.orders.put(updated);
       setOrders((prev) => prev.map((o) => (o.id === data.id ? updated : o)));
     } else {
+      let financeId = data.financeTransactionId;
+
+      if (syncToFinances && data.amount > 0) {
+        const revenueTx: Transaction = {
+          type: 'Income',
+          category: 'Order Revenue',
+          amount: data.amount,
+          date: data.orderDate,
+          description: `Order ${data.orderNumber}: ${data.itemsDescription}`,
+          customerId: data.customerId,
+          invoiceNumber: data.orderNumber,
+          timestamp: Date.now(),
+        };
+        financeId = await db.finances.add(revenueTx);
+        setTransactions((prev) => [{ ...revenueTx, id: financeId }, ...prev]);
+      }
+
       const newOrder: CustomerOrder = {
         ...data,
         financeTransactionId: financeId,
@@ -245,7 +283,10 @@ export default function App() {
     const updated: CustomerOrder = {
       ...existing,
       status,
-      shippedDate: status === 'Shipped' && !existing.shippedDate ? new Date().toISOString().slice(0, 10) : existing.shippedDate,
+      shippedDate:
+        status === 'Shipped' && !existing.shippedDate
+          ? new Date().toISOString().slice(0, 10)
+          : existing.shippedDate,
     };
 
     await db.orders.put(updated);
@@ -253,8 +294,16 @@ export default function App() {
   };
 
   const handleDeleteOrder = async (id: number) => {
+    const existing = orders.find((o) => o.id === id);
     await db.orders.delete(id);
     setOrders((prev) => prev.filter((o) => o.id !== id));
+
+    if (existing?.financeTransactionId) {
+      await db.finances.delete(existing.financeTransactionId);
+      setTransactions((prev) =>
+        prev.filter((t) => t.id !== existing.financeTransactionId)
+      );
+    }
   };
 
   // Supplier Actions
@@ -290,16 +339,29 @@ export default function App() {
     setSupplierTransactions((prev) => prev.filter((st) => st.supplierId !== id));
   };
 
-  // Supplier Transaction Actions
+  // Supplier Transaction Actions (Create & Edit)
   const handleSaveSupplierTransaction = async (
-    data: Omit<SupplierTransaction, 'id' | 'timestamp'>
+    data: Omit<SupplierTransaction, 'id' | 'timestamp'> & { id?: number }
   ) => {
-    const newTx: SupplierTransaction = {
-      ...data,
-      timestamp: Date.now(),
-    };
-    const id = await db.supplierTransactions.add(newTx);
-    setSupplierTransactions((prev) => [newTx, ...prev].map((t) => (t === newTx ? { ...t, id } : t)));
+    if (data.id) {
+      const existing = supplierTransactions.find((st) => st.id === data.id);
+      const updated: SupplierTransaction = {
+        ...data,
+        id: data.id,
+        timestamp: existing?.timestamp || Date.now(),
+      };
+      await db.supplierTransactions.put(updated);
+      setSupplierTransactions((prev) =>
+        prev.map((st) => (st.id === data.id ? updated : st))
+      );
+    } else {
+      const newTx: SupplierTransaction = {
+        ...data,
+        timestamp: Date.now(),
+      };
+      const id = await db.supplierTransactions.add(newTx);
+      setSupplierTransactions((prev) => [{ ...newTx, id }, ...prev]);
+    }
   };
 
   const handleDeleteSupplierTransaction = async (id: number) => {
@@ -373,6 +435,8 @@ export default function App() {
             currentView={currentView}
             onOpenMobileMenu={() => setMobileSidebarOpen(true)}
             onOpenTransactionModal={() => {
+              setEditingTransaction(null);
+              setDefaultTransactionCategory(null);
               setTransactionPrefillCustomerId(null);
               setIsTransactionModalOpen(true);
             }}
@@ -396,6 +460,8 @@ export default function App() {
                   financialHealth={financialHealth}
                   printQueueCount={printQueue.reduce((acc, q) => acc + (q.quantity || 1), 0)}
                   onOpenTransactionModal={() => {
+                    setEditingTransaction(null);
+                    setDefaultTransactionCategory(null);
                     setTransactionPrefillCustomerId(null);
                     setIsTransactionModalOpen(true);
                   }}
@@ -432,11 +498,14 @@ export default function App() {
                 <CustomersView
                   customers={customers}
                   transactions={transactions}
+                  orders={orders}
                   onOpenCustomerModal={(cust) => {
                     setEditingCustomer(cust || null);
                     setIsCustomerModalOpen(true);
                   }}
                   onOpenTransactionWithCustomer={(cId) => {
+                    setEditingTransaction(null);
+                    setDefaultTransactionCategory(null);
                     setTransactionPrefillCustomerId(cId);
                     setIsTransactionModalOpen(true);
                   }}
@@ -444,6 +513,17 @@ export default function App() {
                     setEditingOrder(null);
                     setOrderPrefillCustomerId(cId);
                     setIsOrderModalOpen(true);
+                  }}
+                  onEditOrder={(ord) => {
+                    setEditingOrder(ord);
+                    setOrderPrefillCustomerId(null);
+                    setIsOrderModalOpen(true);
+                  }}
+                  onEditTransaction={(tx) => {
+                    setEditingTransaction(tx);
+                    setDefaultTransactionCategory(tx.category);
+                    setTransactionPrefillCustomerId(tx.customerId || null);
+                    setIsTransactionModalOpen(true);
                   }}
                   onAddToPrintQueue={handleAddToPrintQueue}
                   onDeleteCustomer={handleDeleteCustomer}
@@ -459,7 +539,8 @@ export default function App() {
                     setEditingSupplier(sup || null);
                     setIsSupplierModalOpen(true);
                   }}
-                  onOpenTransactionModal={(sId, dType, sAmount) => {
+                  onOpenTransactionModal={(sId, dType, sAmount, editingTx) => {
+                    setEditingSupplierTransaction(editingTx || null);
                     setSupplierTxPrefillId(sId || null);
                     setSupplierTxDefaultType(dType || 'Bill');
                     setSupplierTxSuggestedAmount(sAmount);
@@ -474,11 +555,31 @@ export default function App() {
                 <FinancesView
                   transactions={transactions}
                   customers={customers}
-                  onOpenTransactionModal={() => {
-                    setTransactionPrefillCustomerId(null);
+                  suppliers={suppliers}
+                  supplierTransactions={supplierTransactions}
+                  orders={orders}
+                  onOpenTransactionModal={(defaultCat, editingTx) => {
+                    setEditingTransaction(editingTx || null);
+                    setDefaultTransactionCategory(defaultCat || null);
+                    setTransactionPrefillCustomerId(editingTx?.customerId || null);
                     setIsTransactionModalOpen(true);
                   }}
                   onDeleteTransaction={handleDeleteTransaction}
+                  onOpenOrderModal={(orderToEdit, prefilledCustId) => {
+                    setEditingOrder(orderToEdit || null);
+                    setOrderPrefillCustomerId(prefilledCustId || null);
+                    setIsOrderModalOpen(true);
+                  }}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onDeleteOrder={handleDeleteOrder}
+                  onOpenSupplierTransactionModal={(sId, dType, sAmount, editingTx) => {
+                    setEditingSupplierTransaction(editingTx || null);
+                    setSupplierTxPrefillId(sId || null);
+                    setSupplierTxDefaultType(dType || 'Bill');
+                    setSupplierTxSuggestedAmount(sAmount);
+                    setIsSupplierTransactionModalOpen(true);
+                  }}
+                  onDeleteSupplierTransaction={handleDeleteSupplierTransaction}
                 />
               )}
 
@@ -486,6 +587,12 @@ export default function App() {
                 <ReportsView
                   transactions={transactions}
                   customers={customers}
+                  onEditTransaction={(tx) => {
+                    setEditingTransaction(tx);
+                    setDefaultTransactionCategory(tx.category);
+                    setTransactionPrefillCustomerId(tx.customerId || null);
+                    setIsTransactionModalOpen(true);
+                  }}
                 />
               )}
 
@@ -519,10 +626,14 @@ export default function App() {
         onClose={() => {
           setIsTransactionModalOpen(false);
           setTransactionPrefillCustomerId(null);
+          setEditingTransaction(null);
+          setDefaultTransactionCategory(null);
         }}
         onSave={handleSaveTransaction}
         customers={customers}
         prefilledCustomerId={transactionPrefillCustomerId}
+        editingTransaction={editingTransaction}
+        defaultCategory={defaultTransactionCategory}
       />
 
       <CustomerModal
@@ -566,12 +677,14 @@ export default function App() {
           setIsSupplierTransactionModalOpen(false);
           setSupplierTxPrefillId(null);
           setSupplierTxSuggestedAmount(undefined);
+          setEditingSupplierTransaction(null);
         }}
         onSave={handleSaveSupplierTransaction}
         suppliers={suppliers}
         prefilledSupplierId={supplierTxPrefillId}
         defaultType={supplierTxDefaultType}
         suggestedAmount={supplierTxSuggestedAmount}
+        editingTransaction={editingSupplierTransaction}
       />
     </div>
   );
