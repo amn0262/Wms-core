@@ -14,14 +14,24 @@ import {
   TrendingUp,
   Check,
   RotateCcw,
+  Wallet,
+  AlertCircle,
 } from 'lucide-react';
-import type { Customer, CustomerOrder, OrderStatus, CarrierType } from '../types';
+import type {
+  Customer,
+  CustomerOrder,
+  OrderStatus,
+  OrderPaymentStatus,
+  CarrierType,
+} from '../types';
 import { ShipOrderModal } from './ShipOrderModal';
+import { getOrderPaymentInfo } from '../utils/financialTheme';
 
 interface OrdersViewProps {
   orders: CustomerOrder[];
   customers: Customer[];
   onOpenOrderModal: (orderToEdit?: CustomerOrder, prefilledCustomerId?: number) => void;
+  onOpenReceivePaymentModal?: (customerId?: number, orderId?: number) => void;
   onSaveShipment: (
     orderId: number,
     carrier: CarrierType,
@@ -45,6 +55,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   orders,
   customers,
   onOpenOrderModal,
+  onOpenReceivePaymentModal,
   onSaveShipment,
   onUpdateOrderStatus,
   onDeleteOrder,
@@ -54,6 +65,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<
     'ALL' | 'PENDING' | 'SHIPPED' | 'DELIVERED' | 'CANCELLED'
+  >('ALL');
+  const [paymentFilter, setPaymentFilter] = useState<
+    'ALL' | 'UNPAID_OR_PARTIAL' | 'UNPAID' | 'PARTIAL' | 'PAID'
   >('ALL');
   const [carrierFilter, setCarrierFilter] = useState<string>('ALL');
   const [customerFilter, setCustomerFilter] = useState<string>('ALL');
@@ -71,9 +85,12 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     return map;
   }, [customers]);
 
-  // Overall Order Statistics
+  // Overall Order & Payment Statistics
   const stats = useMemo(() => {
     let totalValue = 0;
+    let totalPaid = 0;
+    let totalUnpaidReceivables = 0;
+    let unpaidOrPartialCount = 0;
     let pendingCount = 0;
     let shippedCount = 0;
     let deliveredCount = 0;
@@ -81,7 +98,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
     orders.forEach((o) => {
       if (o.status !== 'Cancelled') {
-        totalValue += Number(o.amount) || 0;
+        const payInfo = getOrderPaymentInfo(o);
+        totalValue += payInfo.total;
+        totalPaid += payInfo.paid;
+        totalUnpaidReceivables += payInfo.remaining;
+        if (payInfo.remaining > 0.01) {
+          unpaidOrPartialCount += 1;
+        }
       }
       if (o.status === 'Processing' || o.status === 'Ready for Dispatch') {
         pendingCount += 1;
@@ -101,6 +124,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     return {
       totalOrders: orders.length,
       totalValue,
+      totalPaid,
+      totalUnpaidReceivables,
+      unpaidOrPartialCount,
       pendingCount,
       shippedCount,
       deliveredCount,
@@ -117,9 +143,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         rawDate: string;
         label: string;
         totalAmount: number;
-        shippedAmount: number;
+        paidAmount: number;
         orderCount: number;
-        shippedCount: number;
       }
     > = {};
 
@@ -132,18 +157,14 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           rawDate: dStr,
           label,
           totalAmount: 0,
-          shippedAmount: 0,
+          paidAmount: 0,
           orderCount: 0,
-          shippedCount: 0,
         };
       }
-      const amt = Number(o.amount) || 0;
+      const payInfo = getOrderPaymentInfo(o);
       dateMap[dStr].orderCount += 1;
-      dateMap[dStr].totalAmount += amt;
-      if (o.status === 'Shipped' || o.status === 'Delivered') {
-        dateMap[dStr].shippedCount += 1;
-        dateMap[dStr].shippedAmount += amt;
-      }
+      dateMap[dStr].totalAmount += payInfo.total;
+      dateMap[dStr].paidAmount += payInfo.paid;
     });
 
     const sorted = Object.values(dateMap).sort(
@@ -154,8 +175,8 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
     if (recent.length === 0) {
       return [
-        { rawDate: '-', label: 'D1', totalAmount: 0, shippedAmount: 0, orderCount: 0, shippedCount: 0 },
-        { rawDate: '-', label: 'D2', totalAmount: 0, shippedAmount: 0, orderCount: 0, shippedCount: 0 },
+        { rawDate: '-', label: 'D1', totalAmount: 0, paidAmount: 0, orderCount: 0 },
+        { rawDate: '-', label: 'D2', totalAmount: 0, paidAmount: 0, orderCount: 0 },
       ];
     }
     return recent;
@@ -166,7 +187,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   const padX = 44;
   const padY = 24;
   const maxTrendVal = Math.max(
-    ...trendData.map((d) => Math.max(d.totalAmount, d.shippedAmount)),
+    ...trendData.map((d) => Math.max(d.totalAmount, d.paidAmount)),
     100
   );
 
@@ -176,17 +197,17 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     return { x, y, val: d.totalAmount, label: d.label, count: d.orderCount };
   });
 
-  const ptsShipped = trendData.map((d, i) => {
+  const ptsPaid = trendData.map((d, i) => {
     const x = padX + (i * (chartW - padX * 2)) / Math.max(trendData.length - 1, 1);
-    const y = chartH - padY - (d.shippedAmount / maxTrendVal) * (chartH - padY * 2);
-    return { x, y, val: d.shippedAmount, label: d.label, count: d.shippedCount };
+    const y = chartH - padY - (d.paidAmount / maxTrendVal) * (chartH - padY * 2);
+    return { x, y, val: d.paidAmount, label: d.label };
   });
 
   const pathTotal = ptsTotal.length
     ? `M ${ptsTotal.map((p) => `${p.x} ${p.y}`).join(' L ')}`
     : '';
-  const pathShipped = ptsShipped.length
-    ? `M ${ptsShipped.map((p) => `${p.x} ${p.y}`).join(' L ')}`
+  const pathPaid = ptsPaid.length
+    ? `M ${ptsPaid.map((p) => `${p.x} ${p.y}`).join(' L ')}`
     : '';
 
   // Filtered Orders
@@ -210,6 +231,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           if (o.status !== 'Delivered') return false;
         } else if (statusFilter === 'CANCELLED') {
           if (o.status !== 'Cancelled') return false;
+        }
+
+        // Payment Status Filter
+        if (paymentFilter !== 'ALL') {
+          const payInfo = getOrderPaymentInfo(o);
+          if (paymentFilter === 'UNPAID_OR_PARTIAL' && payInfo.remaining <= 0.01) return false;
+          if (paymentFilter === 'UNPAID' && payInfo.paymentStatus !== 'Unpaid') return false;
+          if (paymentFilter === 'PARTIAL' && payInfo.paymentStatus !== 'Partially Paid')
+            return false;
+          if (paymentFilter === 'PAID' && payInfo.paymentStatus !== 'Paid') return false;
         }
 
         if (searchTerm.trim()) {
@@ -239,6 +270,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
     orders,
     searchTerm,
     statusFilter,
+    paymentFilter,
     carrierFilter,
     customerFilter,
     startDate,
@@ -280,90 +312,91 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <Package className="w-4 h-4 text-sky-400" />
-              Total Customer Orders
+              Total Orders Value
             </span>
             <span className="text-[11px] font-mono text-slate-300">
-              {stats.totalOrders} Consignments
+              {stats.totalOrders} Orders
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-white">
             €{stats.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Total gross order revenue across all client accounts
+            Total value of all executed customer orders
           </p>
         </div>
 
         <div className="p-5 rounded-xl bg-[#141820] border border-emerald-900/40 shadow-xs">
           <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
-              <Truck className="w-4 h-4" />
-              Shipped & Dispatched
+              <CheckCircle2 className="w-4 h-4" />
+              Paid & Collected
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              {stats.shippedCount} In Transit
+              Cash Received
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-400">
-            {stats.shippedCount} <span className="text-sm font-normal text-slate-400">Shipments</span>
+            €{stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Parcels dispatched via standard local carriers (DHL, DPD, Hermes, GLS, UPS)
+            Payments received upfront or via customer balance settlements
           </p>
         </div>
 
-        <div className="p-5 rounded-xl bg-[#141820] border border-amber-900/40 shadow-xs">
-          <div className="flex items-center justify-between text-xs text-amber-400 font-semibold mb-2">
+        <div className="p-5 rounded-xl bg-[#141820] border border-rose-900/50 shadow-xs">
+          <div className="flex items-center justify-between text-xs text-rose-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              Pending Dispatch
+              <AlertCircle className="w-4 h-4" />
+              Unpaid Customer Balance
             </span>
-            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">
-              {stats.pendingCount} Due
+            <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30">
+              {stats.unpaidOrPartialCount} Unsettled
             </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-amber-400">
-            {stats.pendingCount} <span className="text-sm font-normal text-slate-400">Orders</span>
+          <div className="text-2xl font-bold font-mono text-rose-400">
+            €{stats.totalUnpaidReceivables.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Orders currently in processing or packing on staging racks
+            Orders executed on credit awaiting customer payment
           </p>
         </div>
 
         <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              Fulfillment Rate
+              <Truck className="w-4 h-4 text-sky-400" />
+              Dispatch & Fulfillment
             </span>
-            <span className="text-[11px] font-mono text-emerald-400 font-bold">
-              {stats.deliveredCount} Delivered
+            <span className="text-[11px] font-mono text-amber-400 font-bold">
+              {stats.pendingCount} Pending
             </span>
           </div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">
-            {stats.fulfillmentRate.toFixed(1)}%
+          <div className="text-2xl font-bold font-mono text-sky-400">
+            {stats.shippedCount + stats.deliveredCount}{' '}
+            <span className="text-sm font-normal text-slate-400">Shipped</span>
           </div>
           <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
             <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+              className="h-full bg-sky-500 rounded-full transition-all duration-500"
               style={{ width: `${stats.fulfillmentRate}%` }}
             />
           </div>
         </div>
       </div>
 
-      {/* 2. ORDERS & SHIPMENTS TIMELINE TREND CHART */}
+      {/* 2. ORDERS VALUE VS COLLECTED PAYMENTS TIMELINE TREND CHART */}
       <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-sky-400" />
               <h3 className="text-sm font-semibold text-white">
-                Customer Orders & Local Shipments Timeline Trend
+                Customer Orders Billed vs. Paid Amount Trend Line
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Total order volume (€) vs dispatched/shipped orders (€) over time
+              Total order volume (€) vs collected customer payments (€) across order dates
             </p>
           </div>
           <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
@@ -432,9 +465,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 strokeLinejoin="round"
               />
             )}
-            {pathShipped && (
+            {pathPaid && (
               <path
-                d={pathShipped}
+                d={pathPaid}
                 fill="none"
                 stroke="#10b981"
                 strokeWidth="2.5"
@@ -468,22 +501,24 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 </text>
               </g>
             ))}
-            {ptsShipped.map((p, idx) => (
+            {ptsPaid.map((p, idx) => (
               <circle key={`os-${idx}`} cx={p.x} cy={p.y} r="3" fill="#10b981" />
             ))}
           </svg>
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs text-slate-400">
-          <div className="flex items-center gap-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80 text-xs text-slate-400">
+          <div className="flex flex-wrap items-center gap-5">
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-sky-500 rounded-full" />
-              <span className="text-slate-300">Total Orders Volume (€{stats.totalValue.toFixed(2)})</span>
+              <span className="text-slate-300">
+                Total Orders Billed (€{stats.totalValue.toFixed(2)})
+              </span>
             </span>
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-emerald-500 rounded-full border-t border-dashed" />
               <span className="text-slate-300">
-                Dispatched & Delivered ({stats.shippedCount + stats.deliveredCount} orders)
+                Paid Amount (€{stats.totalPaid.toFixed(2)})
               </span>
             </span>
           </div>
@@ -507,20 +542,32 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             />
           </div>
 
-          <button
-            onClick={() => onOpenOrderModal()}
-            className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>+ New Customer Order</span>
-          </button>
+          <div className="flex flex-wrap items-center gap-2.5">
+            {onOpenReceivePaymentModal && (
+              <button
+                onClick={() => onOpenReceivePaymentModal()}
+                className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>+ Receive Customer Payment</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onOpenOrderModal()}
+              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>+ New Customer Order (Paid or Unpaid)</span>
+            </button>
+          </div>
         </div>
 
         {/* Multi-Variable Filters */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
-          {/* Status Tabs */}
+          {/* Status & Payment Tabs */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-slate-400 font-medium mr-1 text-[11px]">Order Status:</span>
+            <span className="text-slate-400 font-medium mr-1 text-[11px]">Dispatch:</span>
             <button
               onClick={() => setStatusFilter('ALL')}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
@@ -551,15 +598,33 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             >
               Shipped ({stats.shippedCount})
             </button>
+
+            <span className="text-slate-600 mx-1">|</span>
+            <span className="text-slate-400 font-medium mr-1 text-[11px]">Payment:</span>
             <button
-              onClick={() => setStatusFilter('DELIVERED')}
+              onClick={() =>
+                setPaymentFilter(
+                  paymentFilter === 'UNPAID_OR_PARTIAL' ? 'ALL' : 'UNPAID_OR_PARTIAL'
+                )
+              }
+              className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer flex items-center gap-1 ${
+                paymentFilter === 'UNPAID_OR_PARTIAL'
+                  ? 'bg-rose-600 text-white'
+                  : 'bg-slate-900 text-rose-300 border border-rose-500/30 hover:bg-rose-950/40'
+              }`}
+            >
+              <AlertCircle className="w-3 h-3" />
+              <span>Unpaid / Balance Due ({stats.unpaidOrPartialCount})</span>
+            </button>
+            <button
+              onClick={() => setPaymentFilter(paymentFilter === 'PAID' ? 'ALL' : 'PAID')}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
-                statusFilter === 'DELIVERED'
-                  ? 'bg-sky-600 text-white'
+                paymentFilter === 'PAID'
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Delivered ({stats.deliveredCount})
+              Paid
             </button>
           </div>
 
@@ -608,6 +673,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             />
 
             {(statusFilter !== 'ALL' ||
+              paymentFilter !== 'ALL' ||
               carrierFilter !== 'ALL' ||
               customerFilter !== 'ALL' ||
               startDate ||
@@ -616,6 +682,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               <button
                 onClick={() => {
                   setStatusFilter('ALL');
+                  setPaymentFilter('ALL');
                   setCarrierFilter('ALL');
                   setCustomerFilter('ALL');
                   setStartDate('');
@@ -631,13 +698,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         </div>
       </div>
 
-      {/* 4. ORDERS TABLE (WITH INLINE ORDER STATUS SELECTOR & FULL EDIT/DELETE) */}
+      {/* 4. ORDERS TABLE (WITH PAYMENT STATUS, REMAINING BALANCE & RECEIVE PAYMENT ACTION) */}
       {filteredOrders.length === 0 ? (
         <div className="p-12 text-center rounded-xl bg-[#141820] border border-slate-800 text-slate-400 space-y-3">
           <Package className="w-10 h-10 text-slate-600 mx-auto" />
           <h3 className="text-sm font-semibold text-slate-200">No Orders Found</h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Create customer orders to track fulfillment status, assign local carrier tracking numbers (DHL, DPD, Hermes, GLS, UPS), and link shipments directly to customer accounts.
+            Create customer orders with immediate payment or on credit (unpaid), assign local carrier tracking numbers, and settle customer balances anytime.
           </p>
           <button
             onClick={() => onOpenOrderModal()}
@@ -655,8 +722,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 <th className="py-3.5 px-4">Order # & Date</th>
                 <th className="py-3.5 px-4">Customer Account</th>
                 <th className="py-3.5 px-4">Goods & Items</th>
-                <th className="py-3.5 px-4 text-right">Value (€)</th>
-                <th className="py-3.5 px-4 text-center">Order Status (Quick Change)</th>
+                <th className="py-3.5 px-4 text-right">Order Value</th>
+                <th className="py-3.5 px-4 text-center">Payment Status & Balance</th>
+                <th className="py-3.5 px-4 text-center">Dispatch Status</th>
                 <th className="py-3.5 px-4">Local Carrier & Tracking #</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
@@ -667,6 +735,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 const isShipped = order.status === 'Shipped';
                 const isDelivered = order.status === 'Delivered';
                 const hasTracking = !!order.trackingNumber;
+                const payInfo = getOrderPaymentInfo(order);
 
                 return (
                   <tr key={order.id} className="hover:bg-slate-800/40 transition-colors">
@@ -720,12 +789,46 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                     </td>
 
                     {/* Value */}
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-right font-mono font-bold text-white whitespace-nowrap">
                       €
-                      {(Number(order.amount) || 0).toLocaleString(undefined, {
+                      {payInfo.total.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
+                    </td>
+
+                    {/* Payment Status & Remaining Balance */}
+                    <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                      <div className="flex flex-col items-center gap-1">
+                        {payInfo.paymentStatus === 'Paid' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                            <CheckCircle2 className="w-3 h-3" /> Paid (€{payInfo.paid.toFixed(2)})
+                          </span>
+                        ) : payInfo.paymentStatus === 'Partially Paid' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                            <Clock className="w-3 h-3" /> Partial · Due: €
+                            {payInfo.remaining.toFixed(2)}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                            <AlertCircle className="w-3 h-3" /> Unpaid · Due: €
+                            {payInfo.remaining.toFixed(2)}
+                          </span>
+                        )}
+
+                        {payInfo.remaining > 0.01 && onOpenReceivePaymentModal && (
+                          <button
+                            onClick={() =>
+                              onOpenReceivePaymentModal(order.customerId, order.id)
+                            }
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold transition-colors cursor-pointer"
+                            title="Receive payment from customer for this order"
+                          >
+                            <Wallet className="w-2.5 h-2.5" />
+                            <span>+ Receive Payment</span>
+                          </button>
+                        )}
+                      </div>
                     </td>
 
                     {/* Interactive Status Selector + Badge */}
@@ -817,9 +920,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                           <button
                             onClick={() => setActiveShipModalOrder(order)}
                             title="Mark as Shipped with Local Tracking Number"
-                            className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold transition-colors cursor-pointer"
+                            className="px-2.5 py-1 rounded bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40 text-[11px] font-bold transition-colors cursor-pointer"
                           >
-                            Mark Shipped
+                            Ship
                           </button>
                         )}
 
@@ -835,7 +938,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
                         <button
                           onClick={() => onOpenOrderModal(order)}
-                          title="Edit order & status"
+                          title="Edit order, payment status & details"
                           className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />

@@ -1,17 +1,63 @@
-import type { Transaction, Supplier, SupplierTransaction } from '../types';
+import type {
+  Transaction,
+  Supplier,
+  SupplierTransaction,
+  CustomerOrder,
+  OrderPaymentStatus,
+} from '../types';
+
+export function getOrderPaymentInfo(order: CustomerOrder): {
+  total: number;
+  paid: number;
+  remaining: number;
+  paymentStatus: OrderPaymentStatus;
+} {
+  const total = Number(order.amount) || 0;
+  if (order.status === 'Cancelled') {
+    return { total, paid: 0, remaining: 0, paymentStatus: 'Paid' };
+  }
+
+  let paid: number;
+  if (order.paidAmount !== undefined && order.paidAmount !== null) {
+    paid = Number(order.paidAmount) || 0;
+  } else if (order.paymentStatus === 'Unpaid') {
+    paid = 0;
+  } else {
+    paid = total;
+  }
+
+  const remaining = Math.max(0, total - paid);
+  let paymentStatus: OrderPaymentStatus = 'Paid';
+  if (total > 0 && paid <= 0.01) {
+    paymentStatus = 'Unpaid';
+  } else if (remaining > 0.01) {
+    paymentStatus = 'Partially Paid';
+  } else {
+    paymentStatus = 'Paid';
+  }
+
+  return { total, paid, remaining, paymentStatus };
+}
 
 export interface FinancialHealthMetrics {
   // 1. All Revenues Breakdown
-  ordersRevenue: number; // Customer orders income
+  ordersRevenue: number; // Customer orders & customer payment inflows received
+  ownerCapitalInjected: number; // Personal funds added by owner (إضافة نقود من المال الخاص)
   otherRevenue: number; // Other miscellaneous receipts
-  totalIncome: number; // All income combined
+  totalIncome: number; // All cash/bank income received
+
+  // 1b. Customer Orders & Receivables (Unpaid Customer Balances)
+  totalCustomerReceivables: number; // Money owed TO us by customers for unpaid/partially-paid orders
+  unpaidOrdersCount: number; // Number of orders with remaining unpaid balance
 
   // 2. All Expenses & Direct Outflows Breakdown
-  shippingExpenses: number; // Freight & carrier costs (DHL, etc.)
+  shippingExpenses: number; // Standard local parcel carrier costs (DHL, DPD, Hermes, GLS, UPS)
   goodsExpensesDirect: number; // Direct goods/merchandise cash outlays
   fleetExpenses: number; // Vehicle & fuel expenses
   warehouseRentExpenses: number; // Facility & storage lease
   packagingExpenses: number; // Boxes, tape & shipping supplies
+  personalWithdrawals: number; // Cash withdrawn for personal use (سحب نقود للاستخدام الشخصي)
+  netOwnerEquityFlow: number; // ownerCapitalInjected - personalWithdrawals
   generalExpenses: number; // Administrative & operating overhead
   totalExpenses: number; // All ledger expenses combined
 
@@ -24,12 +70,19 @@ export interface FinancialHealthMetrics {
 
   // 4. Comprehensive Consolidated Position
   operationalNet: number; // totalIncome - totalExpenses
-  comprehensiveNet: number; // operationalNet - totalSupplierDebt (All-inclusive real position)
+  comprehensiveNet: number; // operationalNet - totalSupplierDebt (All-inclusive real cash/payable position)
   isProfitable: boolean;
   isInDebt: boolean;
 
   // 5. Dynamic Graded Theme State
-  tierId: 'strong-profit' | 'solid-profit' | 'mild-profit' | 'break-even' | 'mild-debt' | 'moderate-debt' | 'heavy-debt';
+  tierId:
+    | 'strong-profit'
+    | 'solid-profit'
+    | 'mild-profit'
+    | 'break-even'
+    | 'mild-debt'
+    | 'moderate-debt'
+    | 'heavy-debt';
   tierLevel: number; // +3, +2, +1, 0, -1, -2, -3
   label: string;
   sublabel: string;
@@ -46,10 +99,12 @@ export interface FinancialHealthMetrics {
 export function computeFinancialHealth(
   transactions: Transaction[],
   suppliers: Supplier[],
-  supplierTransactions: SupplierTransaction[]
+  supplierTransactions: SupplierTransaction[],
+  orders: CustomerOrder[] = []
 ): FinancialHealthMetrics {
-  // 1. Operational Finances (Revenues, Carrier Shipping, Direct Goods, Overheads)
+  // 1. Operational Finances (Revenues received, Owner Capital, Local Shipping, Direct Goods, Overheads, Personal Withdrawals)
   let ordersRevenue = 0;
+  let ownerCapitalInjected = 0;
   let otherRevenue = 0;
   let totalIncome = 0;
 
@@ -58,6 +113,7 @@ export function computeFinancialHealth(
   let fleetExpenses = 0;
   let warehouseRentExpenses = 0;
   let packagingExpenses = 0;
+  let personalWithdrawals = 0;
   let generalExpenses = 0;
   let totalExpenses = 0;
 
@@ -65,8 +121,13 @@ export function computeFinancialHealth(
     const amt = Number(t.amount) || 0;
     if (t.type === 'Income') {
       totalIncome += amt;
-      if (t.category === 'Order Revenue') ordersRevenue += amt;
-      else otherRevenue += amt;
+      if (t.category === 'Order Revenue' || t.category === 'Customer Payment') {
+        ordersRevenue += amt;
+      } else if (t.category === 'Owner Capital Injection') {
+        ownerCapitalInjected += amt;
+      } else {
+        otherRevenue += amt;
+      }
     } else {
       totalExpenses += amt;
       if (t.category === 'Shipping') shippingExpenses += amt;
@@ -74,7 +135,21 @@ export function computeFinancialHealth(
       else if (t.category === 'Vehicle') fleetExpenses += amt;
       else if (t.category === 'Warehouse Rent') warehouseRentExpenses += amt;
       else if (t.category === 'Packaging & Supplies') packagingExpenses += amt;
+      else if (t.category === 'Personal Withdrawal') personalWithdrawals += amt;
       else generalExpenses += amt;
+    }
+  });
+
+  const netOwnerEquityFlow = ownerCapitalInjected - personalWithdrawals;
+
+  // 1b. Customer Receivables (Unpaid / Partially Paid Customer Orders)
+  let totalCustomerReceivables = 0;
+  let unpaidOrdersCount = 0;
+  orders.forEach((o) => {
+    const info = getOrderPaymentInfo(o);
+    if (info.remaining > 0.01) {
+      totalCustomerReceivables += info.remaining;
+      unpaidOrdersCount += 1;
     }
   });
 
@@ -118,8 +193,6 @@ export function computeFinancialHealth(
   const netSupplierExposure = totalSupplierDebt - totalSupplierCredit;
 
   // 3. Complete Consolidated Real Net:
-  // All Customer Revenues MINUS All Operating Costs (Shipping, Rent, Fleet, Packaging, General)
-  // MINUS Direct Goods purchases MINUS Outstanding Supplier Goods Debts!
   const comprehensiveNet = operationalNet - totalSupplierDebt;
 
   const isProfitable = comprehensiveNet > 0;
@@ -127,13 +200,18 @@ export function computeFinancialHealth(
 
   const baseMetrics = {
     ordersRevenue,
+    ownerCapitalInjected,
     otherRevenue,
     totalIncome,
+    totalCustomerReceivables,
+    unpaidOrdersCount,
     shippingExpenses,
     goodsExpensesDirect,
     fleetExpenses,
     warehouseRentExpenses,
     packagingExpenses,
+    personalWithdrawals,
+    netOwnerEquityFlow,
     generalExpenses,
     totalExpenses,
     supplierBillsTotal,
@@ -256,7 +334,6 @@ export function computeFinancialHealth(
     };
   }
 
-  // Critical Debt / Heavy Loss
   return {
     ...baseMetrics,
     tierId: 'heavy-debt',

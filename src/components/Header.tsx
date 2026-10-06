@@ -120,19 +120,27 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
                 <div className="space-y-1.5 text-[11px] font-mono">
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Total Revenue:</span>
+                    <span className="text-slate-400">Total Revenue & Inflows:</span>
                     <span className="text-emerald-400 font-bold">
                       €{financialHealth.totalIncome.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Total Expenses:</span>
+                    <span className="text-slate-400">Total Expenses & Draws:</span>
                     <span className="text-rose-400 font-bold">
                       €{financialHealth.totalExpenses.toFixed(2)}
                     </span>
                   </div>
+                  {(financialHealth.ownerCapitalInjected > 0 || financialHealth.personalWithdrawals > 0) && (
+                    <div className="flex justify-between text-[10px] pt-1 border-t border-slate-800/60">
+                      <span className="text-teal-400">Owner Funds (+In / -Draw):</span>
+                      <span className="text-slate-200 font-bold">
+                        +€{financialHealth.ownerCapitalInjected.toFixed(0)} / -€{financialHealth.personalWithdrawals.toFixed(0)}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Operating Net:</span>
+                    <span className="text-slate-400">Cash / Operating Net:</span>
                     <span className={financialHealth.operationalNet >= 0 ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
                       €{financialHealth.operationalNet.toFixed(2)}
                     </span>

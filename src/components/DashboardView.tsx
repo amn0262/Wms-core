@@ -18,8 +18,17 @@ import {
   Package,
   BarChart3,
   Receipt,
+  Wallet,
+  ArrowDownLeft,
 } from 'lucide-react';
-import type { Customer, Transaction, Supplier, SupplierTransaction, CustomerOrder } from '../types';
+import type {
+  Customer,
+  Transaction,
+  TransactionCategory,
+  Supplier,
+  SupplierTransaction,
+  CustomerOrder,
+} from '../types';
 import type { FinancialHealthMetrics } from '../utils/financialTheme';
 import { LiveExchangeTerminal } from './LiveExchangeTerminal';
 
@@ -31,7 +40,7 @@ interface DashboardViewProps {
   orders?: CustomerOrder[];
   financialHealth?: FinancialHealthMetrics;
   printQueueCount: number;
-  onOpenTransactionModal: () => void;
+  onOpenTransactionModal: (defaultCategory?: TransactionCategory) => void;
   onOpenCustomerModal: () => void;
   onOpenOrderModal?: () => void;
   onNavigate: (view: string) => void;
@@ -625,6 +634,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       text: `STANDARD LOCAL PARCEL SHIPPING: -€${shippingCostTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${shippingTxCount} dispatches · ${shippingRatio.toFixed(1)}% of rev)`,
       positive: shippingRatio <= 15,
     });
+
+    const ownerCap = financialHealth?.ownerCapitalInjected ?? 0;
+    const ownerDraw = financialHealth?.personalWithdrawals ?? 0;
+    const netOwnerFlow = financialHealth?.netOwnerEquityFlow ?? (ownerCap - ownerDraw);
+    if (ownerCap > 0 || ownerDraw > 0) {
+      totalsList.push({
+        tag: netOwnerFlow >= 0 ? 'OWNER CAPITAL' : 'PERSONAL DRAW',
+        text: `OWNER EQUITY & PERSONAL FUNDS: INJECTED +€${ownerCap.toFixed(2)} · WITHDRAWN -€${ownerDraw.toFixed(2)} (NET: ${netOwnerFlow >= 0 ? '+' : '-'}€${Math.abs(netOwnerFlow).toFixed(2)})`,
+        positive: netOwnerFlow >= 0,
+      });
+    }
 
     // 2. ALL OPERATIONS: CUSTOMER ORDERS, FINANCIAL TRANSACTIONS & SUPPLIER LEDGER
     // 2a. All Customer Orders
@@ -1583,7 +1603,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
 
               <button
-                onClick={onOpenTransactionModal}
+                onClick={() => onOpenTransactionModal()}
                 className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
@@ -1599,6 +1619,45 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300" />
               </button>
+
+              {/* Quick Owner Capital Injection & Personal Cash Withdrawal Dual Buttons */}
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => onOpenTransactionModal('Owner Capital Injection')}
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-950/30 hover:bg-teal-900/40 border border-teal-500/30 hover:border-teal-400 text-left transition-all cursor-pointer"
+                  title="إضافة نقود من المال الخاص (Inject Personal Funds)"
+                >
+                  <div className="p-1.5 rounded bg-teal-500/20 text-teal-300 shrink-0">
+                    <ArrowDownLeft className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-teal-300 truncate">
+                      + مال خاص (إيداع)
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">
+                      +€{(financialHealth?.ownerCapitalInjected || 0).toFixed(0)}
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => onOpenTransactionModal('Personal Withdrawal')}
+                  className="flex items-center gap-2 p-2.5 rounded-lg bg-pink-950/30 hover:bg-pink-900/40 border border-pink-500/30 hover:border-pink-400 text-left transition-all cursor-pointer"
+                  title="سحب نقود للاستخدام الشخصي (Personal Cash Withdrawal)"
+                >
+                  <div className="p-1.5 rounded bg-pink-500/20 text-pink-300 shrink-0">
+                    <Wallet className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold text-pink-300 truncate">
+                      - سحب شخصي
+                    </div>
+                    <div className="text-[10px] text-slate-400 font-mono truncate">
+                      -€{(financialHealth?.personalWithdrawals || 0).toFixed(0)}
+                    </div>
+                  </div>
+                </button>
+              </div>
 
               <button
                 onClick={() => (onOpenOrderModal ? onOpenOrderModal() : onNavigate('orders'))}

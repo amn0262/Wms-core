@@ -283,12 +283,16 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
             >
               <option value="all">All Categories</option>
-              <option value="Order Revenue">Order Revenue</option>
-              <option value="Shipping">Local Parcel Shipping</option>
-              <option value="Goods/Inventory">Goods / Inventory</option>
-              <option value="Packaging & Supplies">Packaging & Supplies</option>
+              <option value="Order Revenue">Order Revenue (مبيعات طلبيات)</option>
+              <option value="Customer Payment">Customer Payment (دفعة زبون)</option>
+              <option value="Owner Capital Injection">Owner Capital Injection (إضافة من المال الخاص)</option>
+              <option value="Personal Withdrawal">Personal Withdrawal (سحب للاستخدام الشخصي)</option>
+              <option value="Shipping">Local Parcel Shipping (شحن محلي)</option>
+              <option value="Goods/Inventory">Goods / Inventory (شراء بضاعة)</option>
+              <option value="Packaging & Supplies">Packaging & Supplies (مواد تغليف)</option>
               <option value="Vehicle">Vehicle & Fuel</option>
               <option value="Warehouse Rent">Warehouse Rent</option>
+              <option value="Other Income">Other Income</option>
               <option value="General">General</option>
             </select>
           </div>

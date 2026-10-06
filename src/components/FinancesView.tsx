@@ -15,6 +15,7 @@ import {
   RotateCcw,
   ArrowDownLeft,
   ArrowUpRight,
+  Wallet,
 } from 'lucide-react';
 import type {
   Customer,
@@ -25,6 +26,7 @@ import type {
   CustomerOrder,
   OrderStatus,
 } from '../types';
+import { getOrderPaymentInfo } from '../utils/financialTheme';
 
 export type MasterSectionTab =
   | 'ALL'
@@ -32,6 +34,7 @@ export type MasterSectionTab =
   | 'SUPPLIER_GOODS'
   | 'PACKAGING'
   | 'SHIPPING'
+  | 'OWNER_PERSONAL'
   | 'OPERATING';
 
 interface UnifiedLedgerItem {
@@ -68,6 +71,7 @@ interface FinancesViewProps {
   ) => void;
   onDeleteTransaction: (id: number) => Promise<void>;
   onOpenOrderModal?: (orderToEdit?: CustomerOrder, prefilledCustomerId?: number) => void;
+  onOpenReceivePaymentModal?: (customerId?: number, orderId?: number) => void;
   onUpdateOrderStatus?: (orderId: number, status: OrderStatus) => Promise<void>;
   onDeleteOrder?: (id: number) => Promise<void>;
   onOpenSupplierTransactionModal?: (
@@ -96,6 +100,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   onOpenTransactionModal,
   onDeleteTransaction,
   onOpenOrderModal,
+  onOpenReceivePaymentModal,
   onUpdateOrderStatus,
   onDeleteOrder,
   onOpenSupplierTransactionModal,
@@ -157,6 +162,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         ? `${o.carrier || 'DHL'}: ${o.trackingNumber}`
         : o.carrier || 'Pending Carrier';
 
+      const payInfo = getOrderPaymentInfo(o);
+      const payLabel =
+        payInfo.paymentStatus === 'Paid'
+          ? 'Paid'
+          : payInfo.paymentStatus === 'Partially Paid'
+          ? `Partial (Due €${payInfo.remaining.toFixed(0)})`
+          : `Unpaid (Due €${payInfo.remaining.toFixed(0)})`;
+
       list.push({
         uid: `order-${o.id}`,
         source: 'order',
@@ -164,15 +177,17 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         date: o.orderDate,
         timestamp: o.timestamp,
         section: 'ORDERS',
-        badgeLabel: `Customer Order · ${o.status}`,
+        badgeLabel: `Order · ${o.status} · ${payLabel}`,
         badgeColor:
-          o.status === 'Shipped' || o.status === 'Delivered'
-            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-            : o.status === 'Cancelled'
+          payInfo.paymentStatus === 'Unpaid'
             ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+            : payInfo.paymentStatus === 'Partially Paid'
+            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+            : o.status === 'Shipped' || o.status === 'Delivered'
+            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             : 'bg-sky-500/15 text-sky-300 border-sky-500/30',
         title: `${o.orderNumber} — ${o.itemsDescription}`,
-        subtitle: o.notes ? `Note: ${o.notes}` : `Fulfillment Status: ${o.status}`,
+        subtitle: `Payment: ${payInfo.paymentStatus} (Paid €${payInfo.paid.toFixed(2)} / Due €${payInfo.remaining.toFixed(2)}) · Status: ${o.status}`,
         partyName: custName,
         customerId: o.customerId,
         reference: trackBadge,
@@ -229,9 +244,26 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       let badgeLabel: string = t.category;
       let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
 
-      if (t.category === 'Order Revenue' || t.type === 'Income') {
+      if (t.category === 'Owner Capital Injection') {
+        sec = 'OWNER_PERSONAL';
+        badgeLabel = 'إيداع من المال الخاص (+€)';
+        badgeColor = 'bg-teal-500/15 text-teal-300 border-teal-500/30';
+      } else if (t.category === 'Personal Withdrawal') {
+        sec = 'OWNER_PERSONAL';
+        badgeLabel = 'سحب شخصي (-€)';
+        badgeColor = 'bg-orange-500/15 text-orange-300 border-orange-500/30';
+      } else if (
+        t.category === 'Order Revenue' ||
+        t.category === 'Customer Payment' ||
+        t.type === 'Income'
+      ) {
         sec = 'ORDERS';
-        badgeLabel = t.category === 'Order Revenue' ? 'Order Revenue' : 'Other Income';
+        badgeLabel =
+          t.category === 'Customer Payment'
+            ? 'Customer Payment (تسديد رصيد)'
+            : t.category === 'Order Revenue'
+            ? 'Order Revenue'
+            : 'Other Income';
         badgeColor = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
       } else if (t.category === 'Goods/Inventory') {
         sec = 'SUPPLIER_GOODS';
@@ -251,6 +283,13 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         badgeColor = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
       }
 
+      const partyDisplay =
+        t.category === 'Owner Capital Injection'
+          ? 'Owner Personal Funds (المال الخاص)'
+          : t.category === 'Personal Withdrawal'
+          ? 'Owner Personal Draw (سحب شخصي)'
+          : custName;
+
       list.push({
         uid: `fintx-${t.id}`,
         source: 'finance_tx',
@@ -261,8 +300,16 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         badgeLabel,
         badgeColor,
         title: t.description,
-        subtitle: `${t.type} · ${t.category === 'Shipping' ? 'Standard Local Ground Carrier' : t.category}`,
-        partyName: custName,
+        subtitle: `${t.type} · ${
+          t.category === 'Shipping'
+            ? 'Standard Local Ground Carrier'
+            : t.category === 'Owner Capital Injection'
+            ? 'إضافة نقود من المال الخاص إلى رصيد العمل'
+            : t.category === 'Personal Withdrawal'
+            ? 'سحب نقود للاستخدام الشخصي من رصيد العمل'
+            : t.category
+        }${t.paymentMethod ? ` (${t.paymentMethod})` : ''}`,
+        partyName: partyDisplay,
         customerId: t.customerId,
         reference: t.invoiceNumber || '—',
         amount: Number(t.amount) || 0,
@@ -289,6 +336,9 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
     let packagingCount = 0;
     let shippingTotal = 0;
     let shippingCount = 0;
+    let ownerAddedTotal = 0;
+    let ownerWithdrawnTotal = 0;
+    let ownerPersonalCount = 0;
     let operatingTotal = 0;
     let operatingCount = 0;
 
@@ -311,6 +361,13 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       } else if (item.section === 'SHIPPING') {
         shippingTotal += item.amount;
         shippingCount += 1;
+      } else if (item.section === 'OWNER_PERSONAL') {
+        ownerPersonalCount += 1;
+        if (item.isPositive) {
+          ownerAddedTotal += item.amount;
+        } else {
+          ownerWithdrawnTotal += item.amount;
+        }
       } else if (item.section === 'OPERATING') {
         operatingTotal += item.amount;
         operatingCount += 1;
@@ -327,6 +384,10 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       packagingCount,
       shippingTotal,
       shippingCount,
+      ownerAddedTotal,
+      ownerWithdrawnTotal,
+      ownerNetFlow: ownerAddedTotal - ownerWithdrawnTotal,
+      ownerPersonalCount,
       operatingTotal,
       operatingCount,
       totalCount: unifiedOperations.length,
@@ -432,6 +493,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         supplierAmt: number;
         packagingAmt: number;
         shippingAmt: number;
+        ownerAddedAmt: number;
+        ownerWithdrawnAmt: number;
         operatingAmt: number;
       }
     > = {};
@@ -447,6 +510,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           supplierAmt: 0,
           packagingAmt: 0,
           shippingAmt: 0,
+          ownerAddedAmt: 0,
+          ownerWithdrawnAmt: 0,
           operatingAmt: 0,
         };
       }
@@ -454,7 +519,10 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       else if (op.section === 'SUPPLIER_GOODS') dateMap[op.date].supplierAmt += op.amount;
       else if (op.section === 'PACKAGING') dateMap[op.date].packagingAmt += op.amount;
       else if (op.section === 'SHIPPING') dateMap[op.date].shippingAmt += op.amount;
-      else dateMap[op.date].operatingAmt += op.amount;
+      else if (op.section === 'OWNER_PERSONAL') {
+        if (op.isPositive) dateMap[op.date].ownerAddedAmt += op.amount;
+        else dateMap[op.date].ownerWithdrawnAmt += op.amount;
+      } else dateMap[op.date].operatingAmt += op.amount;
     });
 
     const sorted = Object.values(dateMap).sort(
@@ -472,6 +540,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           supplierAmt: 0,
           packagingAmt: 0,
           shippingAmt: 0,
+          ownerAddedAmt: 0,
+          ownerWithdrawnAmt: 0,
           operatingAmt: 0,
         },
         {
@@ -481,6 +551,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           supplierAmt: 0,
           packagingAmt: 0,
           shippingAmt: 0,
+          ownerAddedAmt: 0,
+          ownerWithdrawnAmt: 0,
           operatingAmt: 0,
         },
       ];
@@ -503,9 +575,18 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         ? d.packagingAmt
         : activeSection === 'SHIPPING'
         ? d.shippingAmt
+        : activeSection === 'OWNER_PERSONAL'
+        ? Math.max(d.ownerAddedAmt, d.ownerWithdrawnAmt)
         : activeSection === 'OPERATING'
         ? d.operatingAmt
-        : Math.max(d.ordersAmt, d.supplierAmt, d.packagingAmt, d.shippingAmt)
+        : Math.max(
+            d.ordersAmt,
+            d.supplierAmt,
+            d.packagingAmt,
+            d.shippingAmt,
+            d.ownerAddedAmt,
+            d.ownerWithdrawnAmt
+          )
     ),
     100
   );
@@ -525,6 +606,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   const supplierCurve = buildPath((d) => d.supplierAmt);
   const packagingCurve = buildPath((d) => d.packagingAmt);
   const shippingCurve = buildPath((d) => d.shippingAmt);
+  const ownerAddedCurve = buildPath((d) => d.ownerAddedAmt);
+  const ownerWithdrawnCurve = buildPath((d) => d.ownerWithdrawnAmt);
   const operatingCurve = buildPath((d) => d.operatingAmt);
 
   // Export Filtered Master Operations to CSV
@@ -619,7 +702,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       {/* ================================================================= */}
       {/* 1. DEDICATED SECTION CARDS / TABS (CLICK TO ENTER EACH SECTION)   */}
       {/* ================================================================= */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* All Operations */}
         <button
           onClick={() => setActiveSection('ALL')}
@@ -723,6 +806,31 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           </div>
         </button>
 
+        {/* Owner Personal Funds & Withdrawals Section */}
+        <button
+          onClick={() => setActiveSection('OWNER_PERSONAL')}
+          className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+            activeSection === 'OWNER_PERSONAL'
+              ? 'bg-teal-600/15 border-teal-500 shadow-sm'
+              : 'bg-[#141820] border-slate-800 hover:border-slate-700'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-semibold text-teal-400 mb-1">
+            <span>المال الخاص والسحب</span>
+            <Wallet className="w-3.5 h-3.5" />
+          </div>
+          <div
+            className={`text-lg font-bold font-mono ${
+              sectionStats.ownerNetFlow >= 0 ? 'text-teal-400' : 'text-orange-400'
+            }`}
+          >
+            {sectionStats.ownerNetFlow >= 0 ? '+' : ''}€{sectionStats.ownerNetFlow.toFixed(0)}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-0.5 truncate">
+            +€{sectionStats.ownerAddedTotal.toFixed(0)} / -€{sectionStats.ownerWithdrawnTotal.toFixed(0)}
+          </div>
+        </button>
+
         {/* Operating & Facility Expenses Section */}
         <button
           onClick={() => setActiveSection('OPERATING')}
@@ -755,7 +863,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               <h3 className="text-sm font-semibold text-white">
                 {activeSection === 'ALL' &&
-                  'Master Operations Trend Lines (Orders, Supplier Goods, Packaging & Local Shipping)'}
+                  'Master Operations Trend Lines (Orders, Supplier Goods, Packaging, Local Shipping & Personal Funds)'}
                 {activeSection === 'ORDERS' &&
                   'Customer Orders & Consignment Revenue Trend Line'}
                 {activeSection === 'SUPPLIER_GOODS' &&
@@ -764,6 +872,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                   'Packaging Materials & Cartons Expenditure Trend Line'}
                 {activeSection === 'SHIPPING' &&
                   'Standard Local Parcel Shipping Expenditure Trend Line'}
+                {activeSection === 'OWNER_PERSONAL' &&
+                  'Owner Personal Capital Injections (+€) vs Personal Cash Withdrawals (-€) Trend Line'}
                 {activeSection === 'OPERATING' &&
                   'Warehouse Facility, Vehicle & Administrative Cost Trend Line'}
               </h3>
@@ -885,6 +995,33 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
+            {/* Owner Personal Capital Added (Teal) */}
+            {(activeSection === 'ALL' || activeSection === 'OWNER_PERSONAL') &&
+              ownerAddedCurve.path && (
+                <path
+                  d={ownerAddedCurve.path}
+                  fill="none"
+                  stroke="#14b8a6"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+            {/* Owner Personal Cash Withdrawn (Orange) */}
+            {(activeSection === 'ALL' || activeSection === 'OWNER_PERSONAL') &&
+              ownerWithdrawnCurve.path && (
+                <path
+                  d={ownerWithdrawnCurve.path}
+                  fill="none"
+                  stroke="#f97316"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeDasharray="4 2"
+                />
+              )}
+
             {/* Operating Line (Amber) */}
             {activeSection === 'OPERATING' && operatingCurve.path && (
               <path
@@ -937,6 +1074,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               <span className="w-3 h-1 bg-sky-500 rounded-full" />
               Local Shipping (€{sectionStats.shippingTotal.toFixed(0)})
             </span>
+            <span className="flex items-center gap-1.5 text-slate-300">
+              <span className="w-3 h-1 bg-teal-400 rounded-full" />
+              +Personal Funds (€{sectionStats.ownerAddedTotal.toFixed(0)})
+            </span>
+            <span className="flex items-center gap-1.5 text-slate-300">
+              <span className="w-3 h-1 bg-orange-400 rounded-full" />
+              -Personal Draw (€{sectionStats.ownerWithdrawnTotal.toFixed(0)})
+            </span>
           </div>
           <span className="font-mono text-slate-400">
             Showing <strong className="text-white">{filteredOperations.length}</strong> matching entries
@@ -965,6 +1110,34 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 <span>+ Customer Order</span>
               </button>
             )}
+
+            {onOpenReceivePaymentModal && (
+              <button
+                onClick={() => onOpenReceivePaymentModal()}
+                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              >
+                <Wallet className="w-3.5 h-3.5" />
+                <span>+ Receive Customer Payment</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => onOpenTransactionModal('Owner Capital Injection')}
+              className="px-3 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-xs font-semibold text-teal-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Add cash from personal funds into business account"
+            >
+              <ArrowDownLeft className="w-3.5 h-3.5 text-teal-400" />
+              <span>+ إضافة نقود من المال الخاص</span>
+            </button>
+
+            <button
+              onClick={() => onOpenTransactionModal('Personal Withdrawal')}
+              className="px-3 py-1.5 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/40 text-xs font-semibold text-orange-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Withdraw cash from business for personal use"
+            >
+              <ArrowUpRight className="w-3.5 h-3.5 text-orange-400" />
+              <span>- سحب نقود للاستخدام الشخصي</span>
+            </button>
 
             {onOpenSupplierTransactionModal && (
               <>
@@ -1249,6 +1422,24 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                     {/* Actions: Context-Aware Edit & Delete */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
+                        {item.source === 'order' &&
+                          item.orderObj &&
+                          onOpenReceivePaymentModal &&
+                          getOrderPaymentInfo(item.orderObj).remaining > 0.01 && (
+                            <button
+                              onClick={() =>
+                                onOpenReceivePaymentModal(
+                                  item.orderObj!.customerId,
+                                  item.orderObj!.id
+                                )
+                              }
+                              title="Receive payment from customer for this order"
+                              className="px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                            >
+                              <Wallet className="w-3 h-3" />
+                              <span>Pay</span>
+                            </button>
+                          )}
                         <button
                           onClick={() => handleEditOperation(item)}
                           title="Edit this operation (adapts fields to entry type)"

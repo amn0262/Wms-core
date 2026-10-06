@@ -2,12 +2,15 @@ export type TransactionType = 'Income' | 'Expense';
 
 export type TransactionCategory =
   | 'Order Revenue'
+  | 'Customer Payment'
+  | 'Owner Capital Injection'
   | 'Other Income'
   | 'Shipping'
   | 'Goods/Inventory'
   | 'Vehicle'
   | 'Warehouse Rent'
   | 'Packaging & Supplies'
+  | 'Personal Withdrawal'
   | 'General';
 
 export interface Customer {
@@ -33,7 +36,9 @@ export interface Transaction {
   amount: number;
   date: string; // YYYY-MM-DD
   customerId?: number | null;
+  orderId?: number | null;
   invoiceNumber?: string;
+  paymentMethod?: 'Bank Transfer' | 'Cash' | 'Credit Card' | 'PayPal' | 'Other';
   timestamp: number;
 }
 
@@ -87,9 +92,11 @@ export interface SupplierTransaction {
 }
 
 // ==========================================
-// CUSTOMER ORDERS & SHIPMENT TRACKING
+// CUSTOMER ORDERS, PAYMENT STATUS & TRACKING
 // ==========================================
 export type OrderStatus = 'Processing' | 'Ready for Dispatch' | 'Shipped' | 'Delivered' | 'Cancelled';
+
+export type OrderPaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid';
 
 export type CarrierType = 'DHL' | 'DPD' | 'Hermes' | 'GLS' | 'UPS' | 'Other';
 
@@ -99,13 +106,15 @@ export interface CustomerOrder {
   customerId: number;
   customerName?: string;
   itemsDescription: string;
-  amount: number; // Order value in €
+  amount: number; // Total Order value in €
+  paidAmount?: number; // Amount paid so far in € (0 if unpaid on credit)
+  paymentStatus?: OrderPaymentStatus; // 'Paid' | 'Partially Paid' | 'Unpaid'
   orderDate: string; // YYYY-MM-DD
   status: OrderStatus;
   carrier?: CarrierType;
   trackingNumber?: string;
   shippedDate?: string; // YYYY-MM-DD
   notes?: string;
-  financeTransactionId?: number; // Linked revenue transaction in finances
+  financeTransactionId?: number; // Linked initial revenue transaction in finances (if paid on creation)
   timestamp: number;
 }

@@ -33,7 +33,8 @@ import { CustomerModal } from './components/CustomerModal';
 import { SupplierModal } from './components/SupplierModal';
 import { SupplierTransactionModal } from './components/SupplierTransactionModal';
 import { OrderModal } from './components/OrderModal';
-import { computeFinancialHealth } from './utils/financialTheme';
+import { CustomerPaymentModal } from './components/CustomerPaymentModal';
+import { computeFinancialHealth, getOrderPaymentInfo } from './utils/financialTheme';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -63,6 +64,11 @@ export default function App() {
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState<CustomerOrder | null>(null);
   const [orderPrefillCustomerId, setOrderPrefillCustomerId] = useState<number | null>(null);
+
+  // Customer Payment Modal State (Settle Unpaid Orders / Balance)
+  const [isCustomerPaymentModalOpen, setIsCustomerPaymentModalOpen] = useState(false);
+  const [paymentPrefillCustomerId, setPaymentPrefillCustomerId] = useState<number | null>(null);
+  const [paymentPrefillOrderId, setPaymentPrefillOrderId] = useState<number | null>(null);
 
   // Supplier Modal State
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
@@ -104,8 +110,8 @@ export default function App() {
 
   // Compute Live Financial Health & Graded Theme
   const financialHealth = useMemo(() => {
-    return computeFinancialHealth(transactions, suppliers, supplierTransactions);
-  }, [transactions, suppliers, supplierTransactions]);
+    return computeFinancialHealth(transactions, suppliers, supplierTransactions, orders);
+  }, [transactions, suppliers, supplierTransactions, orders]);
 
   // Count suppliers with debt owed
   const supplierDebtCount = useMemo(() => {
@@ -191,32 +197,61 @@ export default function App() {
     setPrintQueue((prev) => prev.filter((item) => item.customer.id !== id));
   };
 
-  // Order Actions (Create, Edit, Status Update & Sync with Financial Ledger)
+  // Order Actions (Create, Edit, Status Update & Sync with Financial Ledger for Paid/Unpaid/Partial Orders)
   const handleSaveOrder = async (
     data: Omit<CustomerOrder, 'id' | 'timestamp'> & { id?: number },
     syncToFinances: boolean
   ) => {
+    const initialPaid =
+      data.paidAmount !== undefined ? Number(data.paidAmount) || 0 : Number(data.amount) || 0;
+
     if (data.id) {
       const existing = orders.find((o) => o.id === data.id);
-      const linkedFinId = data.financeTransactionId || existing?.financeTransactionId;
+      let linkedFinId = data.financeTransactionId || existing?.financeTransactionId;
 
-      // If order has a linked financial transaction, keep it synchronized
       if (linkedFinId) {
         const existingFin = transactions.find((t) => t.id === linkedFinId);
         if (existingFin) {
-          const updatedFin: Transaction = {
-            ...existingFin,
-            amount: data.amount,
-            date: data.orderDate,
-            description: `Order ${data.orderNumber}: ${data.itemsDescription}`,
-            customerId: data.customerId,
-            invoiceNumber: data.orderNumber,
-          };
-          await db.finances.put(updatedFin);
-          setTransactions((prev) =>
-            prev.map((t) => (t.id === linkedFinId ? updatedFin : t))
-          );
+          if (initialPaid > 0.01) {
+            const updatedFin: Transaction = {
+              ...existingFin,
+              amount: initialPaid,
+              date: data.orderDate,
+              description: `Order ${data.orderNumber}: ${data.itemsDescription}${
+                initialPaid + 0.01 < data.amount ? ' (Partial Payment)' : ''
+              }`,
+              customerId: data.customerId,
+              orderId: data.id,
+              invoiceNumber: data.orderNumber,
+            };
+            await db.finances.put(updatedFin);
+            setTransactions((prev) =>
+              prev.map((t) => (t.id === linkedFinId ? updatedFin : t))
+            );
+          } else {
+            // Order became Unpaid (0 paid now), remove initial cash receipt
+            await db.finances.delete(linkedFinId);
+            setTransactions((prev) => prev.filter((t) => t.id !== linkedFinId));
+            linkedFinId = undefined;
+          }
         }
+      } else if (syncToFinances && initialPaid > 0.01) {
+        // Was previously unpaid, now has an initial paid amount
+        const revenueTx: Transaction = {
+          type: 'Income',
+          category: 'Order Revenue',
+          amount: initialPaid,
+          date: data.orderDate,
+          description: `Order ${data.orderNumber}: ${data.itemsDescription}${
+            initialPaid + 0.01 < data.amount ? ' (Partial Payment)' : ''
+          }`,
+          customerId: data.customerId,
+          orderId: data.id,
+          invoiceNumber: data.orderNumber,
+          timestamp: Date.now(),
+        };
+        linkedFinId = await db.finances.add(revenueTx);
+        setTransactions((prev) => [{ ...revenueTx, id: linkedFinId }, ...prev]);
       }
 
       const updated: CustomerOrder = {
@@ -230,13 +265,17 @@ export default function App() {
     } else {
       let financeId = data.financeTransactionId;
 
-      if (syncToFinances && data.amount > 0) {
+      // Only record cash/bank Income in finances for the amount actually paid now!
+      // If the order is Unpaid (On Account), paidAmount is 0 so no cash inflow is recorded until payment is received later.
+      if (syncToFinances && initialPaid > 0.01) {
         const revenueTx: Transaction = {
           type: 'Income',
           category: 'Order Revenue',
-          amount: data.amount,
+          amount: initialPaid,
           date: data.orderDate,
-          description: `Order ${data.orderNumber}: ${data.itemsDescription}`,
+          description: `Order ${data.orderNumber}: ${data.itemsDescription}${
+            initialPaid + 0.01 < data.amount ? ' (Initial Deposit)' : ''
+          }`,
           customerId: data.customerId,
           invoiceNumber: data.orderNumber,
           timestamp: Date.now(),
@@ -252,6 +291,105 @@ export default function App() {
       };
       const id = await db.orders.add(newOrder);
       setOrders((prev) => [{ ...newOrder, id }, ...prev]);
+    }
+  };
+
+  // Receive Customer Payment (Settles specific unpaid order or oldest unpaid customer balances)
+  const handleReceiveCustomerPayment = async (payload: {
+    customerId: number;
+    orderId: number | null;
+    amount: number;
+    date: string;
+    paymentMethod: 'Bank Transfer' | 'Cash' | 'Credit Card' | 'PayPal' | 'Other';
+    description: string;
+    referenceInvoice?: string;
+  }) => {
+    // 1. Record the payment transaction in finances
+    const paymentTx: Transaction = {
+      type: 'Income',
+      category: 'Customer Payment',
+      amount: payload.amount,
+      date: payload.date,
+      description: payload.description,
+      customerId: payload.customerId,
+      orderId: payload.orderId,
+      invoiceNumber: payload.referenceInvoice,
+      paymentMethod: payload.paymentMethod,
+      timestamp: Date.now(),
+    };
+    const txId = await db.finances.add(paymentTx);
+    setTransactions((prev) => [{ ...paymentTx, id: txId }, ...prev]);
+
+    // 2. Allocate payment to the specified order OR oldest unpaid orders for this customer
+    let remainingToAllocate = payload.amount;
+    const updatedOrdersMap: Record<number, CustomerOrder> = {};
+
+    if (payload.orderId) {
+      const targetOrder = orders.find((o) => o.id === payload.orderId);
+      if (targetOrder && targetOrder.id) {
+        const info = getOrderPaymentInfo(targetOrder);
+        const applied = Math.min(info.remaining, remainingToAllocate);
+        const newPaid = Math.min(info.total, info.paid + applied);
+        const newStatus =
+          newPaid + 0.01 >= info.total
+            ? 'Paid'
+            : newPaid > 0.01
+            ? 'Partially Paid'
+            : 'Unpaid';
+        const updatedOrd: CustomerOrder = {
+          ...targetOrder,
+          paidAmount: newPaid,
+          paymentStatus: newStatus,
+        };
+        await db.orders.put(updatedOrd);
+        updatedOrdersMap[targetOrder.id] = updatedOrd;
+        remainingToAllocate -= applied;
+      }
+    }
+
+    // If there is still payment amount left (or general account balance settlement was chosen), settle oldest unpaid orders
+    if (remainingToAllocate > 0.01) {
+      const custUnpaidOrders = orders
+        .filter(
+          (o) =>
+            o.customerId === payload.customerId &&
+            o.status !== 'Cancelled' &&
+            o.id !== payload.orderId
+        )
+        .sort(
+          (a, b) =>
+            new Date(a.orderDate).getTime() - new Date(b.orderDate).getTime() ||
+            a.timestamp - b.timestamp
+        );
+
+      for (const ord of custUnpaidOrders) {
+        if (remainingToAllocate <= 0.01 || !ord.id) break;
+        const info = getOrderPaymentInfo(ord);
+        if (info.remaining <= 0.01) continue;
+
+        const applied = Math.min(info.remaining, remainingToAllocate);
+        const newPaid = Math.min(info.total, info.paid + applied);
+        const newStatus =
+          newPaid + 0.01 >= info.total
+            ? 'Paid'
+            : newPaid > 0.01
+            ? 'Partially Paid'
+            : 'Unpaid';
+        const updatedOrd: CustomerOrder = {
+          ...ord,
+          paidAmount: newPaid,
+          paymentStatus: newStatus,
+        };
+        await db.orders.put(updatedOrd);
+        updatedOrdersMap[ord.id] = updatedOrd;
+        remainingToAllocate -= applied;
+      }
+    }
+
+    if (Object.keys(updatedOrdersMap).length > 0) {
+      setOrders((prev) =>
+        prev.map((o) => (o.id && updatedOrdersMap[o.id] ? updatedOrdersMap[o.id] : o))
+      );
     }
   };
 
@@ -459,9 +597,9 @@ export default function App() {
                   orders={orders}
                   financialHealth={financialHealth}
                   printQueueCount={printQueue.reduce((acc, q) => acc + (q.quantity || 1), 0)}
-                  onOpenTransactionModal={() => {
+                  onOpenTransactionModal={(defaultCat) => {
                     setEditingTransaction(null);
-                    setDefaultTransactionCategory(null);
+                    setDefaultTransactionCategory(defaultCat || null);
                     setTransactionPrefillCustomerId(null);
                     setIsTransactionModalOpen(true);
                   }}
@@ -486,6 +624,11 @@ export default function App() {
                     setEditingOrder(orderToEdit || null);
                     setOrderPrefillCustomerId(prefilledCustId || null);
                     setIsOrderModalOpen(true);
+                  }}
+                  onOpenReceivePaymentModal={(cId, oId) => {
+                    setPaymentPrefillCustomerId(cId || null);
+                    setPaymentPrefillOrderId(oId || null);
+                    setIsCustomerPaymentModalOpen(true);
                   }}
                   onSaveShipment={handleSaveShipment}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
@@ -514,17 +657,25 @@ export default function App() {
                     setOrderPrefillCustomerId(cId);
                     setIsOrderModalOpen(true);
                   }}
+                  onOpenReceivePaymentModal={(cId, oId) => {
+                    setPaymentPrefillCustomerId(cId || null);
+                    setPaymentPrefillOrderId(oId || null);
+                    setIsCustomerPaymentModalOpen(true);
+                  }}
                   onEditOrder={(ord) => {
                     setEditingOrder(ord);
                     setOrderPrefillCustomerId(null);
                     setIsOrderModalOpen(true);
                   }}
+                  onUpdateOrderStatus={handleUpdateOrderStatus}
+                  onDeleteOrder={handleDeleteOrder}
                   onEditTransaction={(tx) => {
                     setEditingTransaction(tx);
                     setDefaultTransactionCategory(tx.category);
                     setTransactionPrefillCustomerId(tx.customerId || null);
                     setIsTransactionModalOpen(true);
                   }}
+                  onDeleteTransaction={handleDeleteTransaction}
                   onAddToPrintQueue={handleAddToPrintQueue}
                   onDeleteCustomer={handleDeleteCustomer}
                   showCountryField={senderSettings.showCountryField ?? false}
@@ -569,6 +720,11 @@ export default function App() {
                     setEditingOrder(orderToEdit || null);
                     setOrderPrefillCustomerId(prefilledCustId || null);
                     setIsOrderModalOpen(true);
+                  }}
+                  onOpenReceivePaymentModal={(cId, oId) => {
+                    setPaymentPrefillCustomerId(cId || null);
+                    setPaymentPrefillOrderId(oId || null);
+                    setIsCustomerPaymentModalOpen(true);
                   }}
                   onUpdateOrderStatus={handleUpdateOrderStatus}
                   onDeleteOrder={handleDeleteOrder}
@@ -658,6 +814,20 @@ export default function App() {
         customers={customers}
         editingOrder={editingOrder}
         prefilledCustomerId={orderPrefillCustomerId}
+      />
+
+      <CustomerPaymentModal
+        isOpen={isCustomerPaymentModalOpen}
+        onClose={() => {
+          setIsCustomerPaymentModalOpen(false);
+          setPaymentPrefillCustomerId(null);
+          setPaymentPrefillOrderId(null);
+        }}
+        customers={customers}
+        orders={orders}
+        prefilledCustomerId={paymentPrefillCustomerId}
+        prefilledOrderId={paymentPrefillOrderId}
+        onReceivePayment={handleReceiveCustomerPayment}
       />
 
       {/* Supplier Modals */}

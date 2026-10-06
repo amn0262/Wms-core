@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Truck, Package, Layers, Receipt, Building2 } from 'lucide-react';
+import {
+  X,
+  Check,
+  Truck,
+  Package,
+  Layers,
+  Receipt,
+  Building2,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Wallet,
+} from 'lucide-react';
 import type {
   Customer,
   Transaction,
@@ -29,6 +40,18 @@ const PACKAGING_TYPES = [
   'Shipping Labels & Pouches',
   'Mixed Packaging Supplies',
 ];
+const PERSONAL_WITHDRAWAL_REASONS = [
+  'Personal Living & Household Draw (سحب مصروف شخصي)',
+  'Owner Monthly Profit Draw (سحب أرباح خاصة)',
+  'Personal Cash Withdrawal (سحب نقدي خاص)',
+  'Owner Emergency / Miscellaneous Personal Use',
+];
+const OWNER_INJECTION_SOURCES = [
+  'Owner Personal Funds Injection (إيداع من المال الخاص لدعم السيولة)',
+  'Personal Bank Transfer to Business (تحويل من الحساب الشخصي)',
+  'Cash Capital Deposit by Owner (إيداع نقدي خاص في الصندوق)',
+  'Owner Supplier/Shipping Coverage from Personal Funds',
+];
 
 export const TransactionModal: React.FC<TransactionModalProps> = ({
   isOpen,
@@ -46,12 +69,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<
+    'Bank Transfer' | 'Cash' | 'Credit Card' | 'PayPal' | 'Other'
+  >('Bank Transfer');
 
   // Dynamic context-specific fields
   const [selectedCarrier, setSelectedCarrier] = useState<CarrierType>('DHL');
   const [packagingType, setPackagingType] = useState<string>(PACKAGING_TYPES[0]);
   const [batchQuantity, setBatchQuantity] = useState<string>('');
   const [vendorName, setVendorName] = useState<string>('');
+  const [personalReason, setPersonalReason] = useState<string>(PERSONAL_WITHDRAWAL_REASONS[0]);
+  const [injectionSource, setInjectionSource] = useState<string>(OWNER_INJECTION_SOURCES[0]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -68,6 +96,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setAmount(String(editingTransaction.amount || ''));
       setDate(editingTransaction.date || new Date().toISOString().split('T')[0]);
       setInvoiceNumber(editingTransaction.invoiceNumber || '');
+      setPaymentMethod(editingTransaction.paymentMethod || 'Bank Transfer');
 
       // Detect carrier if shipping
       const lowerDesc = (editingTransaction.description || '').toLowerCase();
@@ -82,7 +111,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     } else {
       if (defaultCategory) {
         const isInc =
-          defaultCategory === 'Order Revenue' || defaultCategory === 'Other Income';
+          defaultCategory === 'Order Revenue' ||
+          defaultCategory === 'Customer Payment' ||
+          defaultCategory === 'Owner Capital Injection' ||
+          defaultCategory === 'Other Income';
         setType(isInc ? 'Income' : 'Expense');
         setCategory(defaultCategory);
       } else {
@@ -94,10 +126,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setAmount('');
       setDate(new Date().toISOString().split('T')[0]);
       setInvoiceNumber('');
+      setPaymentMethod('Cash');
       setSelectedCarrier('DHL');
       setPackagingType(PACKAGING_TYPES[0]);
       setBatchQuantity('');
       setVendorName('');
+      setPersonalReason(PERSONAL_WITHDRAWAL_REASONS[0]);
+      setInjectionSource(OWNER_INJECTION_SOURCES[0]);
     }
   }, [isOpen, editingTransaction, prefilledCustomerId, defaultCategory]);
 
@@ -113,19 +148,35 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   };
 
   const handleQuickPreset = (presetCat: TransactionCategory) => {
-    if (presetCat === 'Order Revenue' || presetCat === 'Other Income') {
+    if (
+      presetCat === 'Order Revenue' ||
+      presetCat === 'Customer Payment' ||
+      presetCat === 'Owner Capital Injection' ||
+      presetCat === 'Other Income'
+    ) {
       setType('Income');
       setCategory(presetCat);
     } else {
       setType('Expense');
       setCategory(presetCat);
     }
+    if (
+      presetCat === 'Owner Capital Injection' ||
+      presetCat === 'Personal Withdrawal'
+    ) {
+      setCustomerId('');
+    }
   };
 
+  const isOwnerPersonalCategory =
+    category === 'Owner Capital Injection' || category === 'Personal Withdrawal';
+
   const isCustomerRelevant =
-    type === 'Income' ||
-    category === 'Shipping' ||
-    category === 'Order Revenue';
+    !isOwnerPersonalCategory &&
+    (type === 'Income' ||
+      category === 'Shipping' ||
+      category === 'Order Revenue' ||
+      category === 'Customer Payment');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,7 +194,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       }
     } else if (category === 'Packaging & Supplies' && !editingTransaction) {
       const parts: string[] = [];
-      if (packagingType && !finalDescription.toLowerCase().includes(packagingType.toLowerCase().split(' ')[0])) {
+      if (
+        packagingType &&
+        !finalDescription.toLowerCase().includes(packagingType.toLowerCase().split(' ')[0])
+      ) {
         parts.push(packagingType);
       }
       if (batchQuantity.trim()) {
@@ -155,6 +209,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       finalDescription = parts.join(' ') || 'Packaging & warehouse supplies batch';
     } else if (category === 'Goods/Inventory' && vendorName.trim() && !editingTransaction) {
       finalDescription = `${vendorName.trim()} — ${finalDescription || 'Merchandise restock'}`;
+    } else if (category === 'Personal Withdrawal' && !editingTransaction) {
+      if (!finalDescription) {
+        finalDescription = personalReason;
+      } else if (!finalDescription.includes(personalReason.split(' (')[0])) {
+        finalDescription = `${personalReason.split(' (')[0]} — ${finalDescription}`;
+      }
+    } else if (category === 'Owner Capital Injection' && !editingTransaction) {
+      if (!finalDescription) {
+        finalDescription = injectionSource;
+      } else if (!finalDescription.includes(injectionSource.split(' (')[0])) {
+        finalDescription = `${injectionSource.split(' (')[0]} — ${finalDescription}`;
+      }
     }
 
     setIsSubmitting(true);
@@ -166,8 +232,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         description: finalDescription || `${category} entry`,
         amount: numAmount,
         date,
-        customerId: customerId ? parseInt(customerId, 10) : null,
+        customerId:
+          isOwnerPersonalCategory || !customerId ? null : parseInt(customerId, 10),
         invoiceNumber: invoiceNumber.trim() || undefined,
+        paymentMethod,
       });
 
       onClose();
@@ -180,7 +248,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-[#141820] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div className="w-full max-w-xl bg-[#141820] border border-slate-700/80 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -189,7 +257,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">
-                {editingTransaction ? 'Edit Ledger Entry' : 'Record Operation / Ledger Entry'}
+                {editingTransaction
+                  ? 'Edit Operation / Ledger Entry'
+                  : category === 'Owner Capital Injection'
+                  ? 'Add Personal Funds (إضافة نقود من المال الخاص)'
+                  : category === 'Personal Withdrawal'
+                  ? 'Withdraw Cash for Personal Use (سحب نقود للاستخدام الشخصي)'
+                  : 'Record Operation / Ledger Entry'}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 Fields adapt dynamically to the selected operation category
@@ -211,18 +285,31 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2">
               Operation Category (Select to adapt fields)
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
               <button
                 type="button"
-                onClick={() => handleQuickPreset('Order Revenue')}
+                onClick={() => handleQuickPreset('Owner Capital Injection')}
                 className={`px-2.5 py-2 rounded-lg text-xs font-semibold border text-left flex items-center gap-1.5 transition-all cursor-pointer ${
-                  category === 'Order Revenue'
-                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40'
-                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                  category === 'Owner Capital Injection'
+                    ? 'bg-teal-600/25 text-teal-200 border-teal-500 shadow-xs'
+                    : 'bg-slate-900 text-teal-400/90 border-slate-800 hover:text-teal-200'
                 }`}
               >
-                <Package className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">Order Revenue</span>
+                <ArrowDownLeft className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span className="truncate">+ من المال الخاص</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickPreset('Personal Withdrawal')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-semibold border text-left flex items-center gap-1.5 transition-all cursor-pointer ${
+                  category === 'Personal Withdrawal'
+                    ? 'bg-orange-600/25 text-orange-200 border-orange-500 shadow-xs'
+                    : 'bg-slate-900 text-orange-400/90 border-slate-800 hover:text-orange-200'
+                }`}
+              >
+                <ArrowUpRight className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                <span className="truncate">- سحب شخصي</span>
               </button>
 
               <button
@@ -266,6 +353,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
               <button
                 type="button"
+                onClick={() => handleQuickPreset('Order Revenue')}
+                className={`px-2.5 py-2 rounded-lg text-xs font-semibold border text-left flex items-center gap-1.5 transition-all cursor-pointer ${
+                  category === 'Order Revenue'
+                    ? 'bg-emerald-600/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Order Revenue</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => handleQuickPreset('Vehicle')}
                 className={`px-2.5 py-2 rounded-lg text-xs font-semibold border text-left flex items-center gap-1.5 transition-all cursor-pointer ${
                   category === 'Vehicle' || category === 'Warehouse Rent' || category === 'General'
@@ -282,7 +382,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onClick={() => handleTypeChange(type === 'Income' ? 'Expense' : 'Income')}
                 className="px-2.5 py-2 rounded-lg text-[11px] font-mono border bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700 text-center cursor-pointer"
               >
-                Type: <strong className={type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}>{type}</strong>
+                Type:{' '}
+                <strong className={type === 'Income' ? 'text-emerald-400' : 'text-rose-400'}>
+                  {type}
+                </strong>
               </button>
             </div>
           </div>
@@ -291,15 +394,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1">
-                Ledger Direction
+                Cashflow Direction
               </label>
               <select
                 value={type}
                 onChange={(e) => handleTypeChange(e.target.value as TransactionType)}
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
               >
-                <option value="Income">Income (Revenue Inflow +€)</option>
-                <option value="Expense">Expense (Cost Outflow -€)</option>
+                <option value="Income">Inflow (+€ Revenue / Personal Capital Added)</option>
+                <option value="Expense">Outflow (-€ Cost / Personal Cash Withdrawal)</option>
               </select>
             </div>
 
@@ -309,18 +412,40 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value as TransactionCategory)}
+                onChange={(e) => {
+                  const val = e.target.value as TransactionCategory;
+                  setCategory(val);
+                  if (
+                    val === 'Owner Capital Injection' ||
+                    val === 'Order Revenue' ||
+                    val === 'Customer Payment' ||
+                    val === 'Other Income'
+                  ) {
+                    setType('Income');
+                  } else {
+                    setType('Expense');
+                  }
+                }}
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-rose-500"
                 required
               >
                 {type === 'Income' ? (
                   <>
-                    <option value="Order Revenue">Order Revenue</option>
-                    <option value="Other Income">Other Income</option>
+                    <option value="Owner Capital Injection">
+                      Owner Capital Injection (إضافة نقود من المال الخاص +€)
+                    </option>
+                    <option value="Order Revenue">Order Revenue (إيراد طلبية)</option>
+                    <option value="Customer Payment">Customer Payment (دفعة زبون)</option>
+                    <option value="Other Income">Other Income (إيراد آخر)</option>
                   </>
                 ) : (
                   <>
-                    <option value="Shipping">Standard Local Shipping (DHL, DPD, Hermes, GLS, UPS)</option>
+                    <option value="Personal Withdrawal">
+                      Personal Cash Withdrawal (سحب نقود للاستخدام الشخصي -€)
+                    </option>
+                    <option value="Shipping">
+                      Standard Local Shipping (DHL, DPD, Hermes, GLS, UPS)
+                    </option>
                     <option value="Packaging & Supplies">Packaging & Supplies Purchase</option>
                     <option value="Goods/Inventory">Goods / Inventory Purchase</option>
                     <option value="Vehicle">Vehicle & Fuel</option>
@@ -331,6 +456,104 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               </select>
             </div>
           </div>
+
+          {/* DYNAMIC FIELDS FOR OWNER CAPITAL INJECTION (إضافة نقود من المال الخاص) */}
+          {category === 'Owner Capital Injection' && (
+            <div className="p-4 rounded-xl bg-teal-950/30 border border-teal-700/50 space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-teal-300">
+                <span className="flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-teal-400" />
+                  إضافة نقود من المال الخاص (Owner Personal Capital Deposit)
+                </span>
+                <span className="text-[10px] font-mono bg-teal-500/20 px-2 py-0.5 rounded text-teal-200">
+                  +€ Cash Inflow
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">
+                    Deposit Purpose / Source (مصدر أو سبب الإيداع)
+                  </label>
+                  <select
+                    value={injectionSource}
+                    onChange={(e) => setInjectionSource(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    {OWNER_INJECTION_SOURCES.map((src) => (
+                      <option key={src} value={src}>
+                        {src}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">
+                    Deposit Method (طريقة الإيداع)
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    <option value="Cash">Cash Deposit (نقدي في الصندوق)</option>
+                    <option value="Bank Transfer">Bank Transfer (تحويل بنكي)</option>
+                    <option value="PayPal">PayPal</option>
+                    <option value="Credit Card">Personal Card</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* DYNAMIC FIELDS FOR PERSONAL WITHDRAWAL (سحب نقود للاستخدام الشخصي) */}
+          {category === 'Personal Withdrawal' && (
+            <div className="p-4 rounded-xl bg-orange-950/30 border border-orange-700/50 space-y-3">
+              <div className="flex items-center justify-between text-xs font-semibold text-orange-300">
+                <span className="flex items-center gap-1.5">
+                  <Wallet className="w-4 h-4 text-orange-400" />
+                  سحب نقود للاستخدام الشخصي (Owner Personal Cash Withdrawal)
+                </span>
+                <span className="text-[10px] font-mono bg-orange-500/20 px-2 py-0.5 rounded text-orange-200">
+                  -€ Cash Outflow
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">
+                    Withdrawal Type / Purpose (غرض السحب الشخصي)
+                  </label>
+                  <select
+                    value={personalReason}
+                    onChange={(e) => setPersonalReason(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    {PERSONAL_WITHDRAWAL_REASONS.map((rsn) => (
+                      <option key={rsn} value={rsn}>
+                        {rsn}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-300 mb-1">
+                    Withdrawal Method (طريقة السحب)
+                  </label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none"
+                  >
+                    <option value="Cash">Cash Draw (سحب نقدي مباشر)</option>
+                    <option value="Bank Transfer">Bank Transfer to Personal Account</option>
+                    <option value="PayPal">PayPal Transfer</option>
+                    <option value="Credit Card">Card / ATM Withdrawal</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* DYNAMIC FIELDS FOR LOCAL PARCEL SHIPPING */}
           {category === 'Shipping' && (
@@ -431,7 +654,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {isCustomerRelevant && (
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Linked Customer Account {type === 'Income' && <span className="text-rose-400">*</span>}
+                Linked Customer Account
               </label>
               <select
                 value={customerId}
@@ -451,14 +674,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
           {/* Description */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Description / Operation Details <span className="text-rose-400">*</span>
+              Description / Note{' '}
+              {!isOwnerPersonalCategory && <span className="text-rose-400">*</span>}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder={
-                category === 'Shipping'
+                category === 'Owner Capital Injection'
+                  ? 'e.g. إيداع نقدي من المال الخاص لدعم حساب المستودع (اختياري)'
+                  : category === 'Personal Withdrawal'
+                  ? 'e.g. سحب نقدي للمصاريف الشخصية (اختياري)'
+                  : category === 'Shipping'
                   ? 'e.g. 3x Local Parcel Boxes to Berlin (#ORD-8401)'
                   : category === 'Packaging & Supplies'
                   ? 'e.g. Double-wall shipping cartons 60x40x40cm'
@@ -466,7 +694,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   ? 'e.g. 200 units Footwear & Apparel restock'
                   : 'e.g. Wholesale order #8401 or operational expense'
               }
-              required
+              required={!isOwnerPersonalCategory}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
@@ -512,6 +740,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
               {category === 'Shipping'
                 ? 'Waybill / Local Tracking Number'
+                : isOwnerPersonalCategory
+                ? 'Voucher / Receipt Reference'
                 : 'Invoice / Reference Number'}{' '}
               <span className="text-slate-500">(Optional)</span>
             </label>
@@ -522,6 +752,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               placeholder={
                 category === 'Shipping'
                   ? 'e.g. 00340434190823908234 or EXP-DHL-1092'
+                  : category === 'Owner Capital Injection'
+                  ? 'e.g. OWN-DEP-01'
+                  : category === 'Personal Withdrawal'
+                  ? 'e.g. OWN-DRW-01'
                   : 'e.g. INV-2026-042 or PKG-1184'
               }
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-rose-500"
@@ -539,8 +773,18 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !description.trim() || !amount}
-              className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 transition-colors shadow-xs cursor-pointer"
+              disabled={
+                isSubmitting ||
+                (!isOwnerPersonalCategory && !description.trim()) ||
+                !amount
+              }
+              className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white transition-colors shadow-xs cursor-pointer disabled:opacity-40 ${
+                category === 'Owner Capital Injection'
+                  ? 'bg-teal-600 hover:bg-teal-500'
+                  : category === 'Personal Withdrawal'
+                  ? 'bg-orange-600 hover:bg-orange-500'
+                  : 'bg-rose-600 hover:bg-rose-500'
+              }`}
             >
               <Check className="w-3.5 h-3.5" />
               <span>
@@ -548,6 +792,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   ? 'Saving...'
                   : editingTransaction
                   ? 'Update Entry'
+                  : category === 'Owner Capital Injection'
+                  ? 'Confirm Personal Capital Deposit (+€)'
+                  : category === 'Personal Withdrawal'
+                  ? 'Confirm Personal Withdrawal (-€)'
                   : 'Save Entry'}
               </span>
             </button>
