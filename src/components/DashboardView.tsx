@@ -7,7 +7,6 @@ import {
   PlusCircle,
   UserPlus,
   ArrowUpRight,
-  ArrowDownRight,
   Activity,
   Truck,
   Layers,
@@ -31,6 +30,7 @@ import type {
 } from '../types';
 import type { FinancialHealthMetrics } from '../utils/financialTheme';
 import { LiveExchangeTerminal } from './LiveExchangeTerminal';
+import { useI18n } from '../utils/i18n';
 
 interface DashboardViewProps {
   customers: Customer[];
@@ -62,6 +62,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenOrderModal,
   onNavigate,
 }) => {
+  const { tr, translateCategory, translateOrderStatus, translateHealthLabel } = useI18n();
   const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
   const [activeTrendTab, setActiveTrendTab] = useState<TrendTabType>('ledger');
   const [tickerFilter, setTickerFilter] = useState<TickerFilterType>('ALL');
@@ -107,7 +108,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     incomeCount,
     shippingCostTotal,
     shippingTxCount,
-    averageOrderValue,
     shippingRatio,
   } = useMemo(() => {
     let rev = 0;
@@ -134,7 +134,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const profit = rev - costs;
     const margin = rev > 0 ? (profit / rev) * 100 : 0;
-    const aov = incCount > 0 ? rev / incCount : 0;
     const sRatio = rev > 0 ? (shipTotal / rev) * 100 : 0;
 
     const catArray = Object.entries(catMap)
@@ -155,7 +154,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       incomeCount: incCount,
       shippingCostTotal: shipTotal,
       shippingTxCount: shipCount,
-      averageOrderValue: aov,
       shippingRatio: sRatio,
     };
   }, [transactions]);
@@ -255,7 +253,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       return dateMap[dateStr];
     };
 
-    // Aggregate from CustomerOrder table
     orders.forEach((o) => {
       const targetDate = o.shippedDate || o.orderDate;
       const entry = ensureDate(targetDate);
@@ -268,7 +265,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     });
 
-    // Aggregate from Finances (Shipping expenses & Order Revenue if no separate order record)
     transactions.forEach((t) => {
       if (t.category === 'Shipping') {
         const entry = ensureDate(t.date);
@@ -469,7 +465,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     ? `M ${pointsSupPaid.map((p) => `${p.x} ${p.y}`).join(' L ')}`
     : '';
 
-  // Standard Local Parcel Carriers Breakdown (100% Real Data — Ground Parcel Only, Zero Air Freight)
+  // Standard Local Parcel Carriers Breakdown
   const carrierMetrics = useMemo(() => {
     let dhlSpend = 0;
     let dhlCount = 0;
@@ -480,7 +476,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     let upsSpend = 0;
     let upsCount = 0;
 
-    // Count from real Shipping expense transactions
     transactions.forEach((t) => {
       if (t.category === 'Shipping') {
         const desc = t.description.toLowerCase();
@@ -495,14 +490,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           upsSpend += amt;
           upsCount += 1;
         } else {
-          // Default standard local carrier is DHL Paket
           dhlSpend += amt;
           dhlCount += 1;
         }
       }
     });
 
-    // Also include shipment counts from Customer Orders if not already counted
     orders.forEach((o) => {
       if (o.status === 'Shipped' || o.status === 'Delivered') {
         if (o.carrier === 'DPD') dpdCount += 1;
@@ -523,35 +516,35 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     return [
       {
-        name: 'DHL Paket (Standard Local)',
-        mode: 'Domestic Ground Parcel',
+        name: tr('DHL Paket (Standard Local)', 'شركة DHL (شحن طرود محلي)'),
+        mode: tr('Domestic Ground Parcel', 'شحن بري داخلي'),
         count: dhlCount,
         spend: dhlSpend,
         share: calcShare(dhlCount, dhlSpend),
       },
       {
-        name: 'DPD Standard Parcel',
-        mode: 'Local Road Network',
+        name: tr('DPD Standard Parcel', 'شركة DPD (شحن طرود قياسي)'),
+        mode: tr('Local Road Network', 'شبكة شحن بري'),
         count: dpdCount,
         spend: dpdSpend,
         share: calcShare(dpdCount, dpdSpend),
       },
       {
-        name: 'Hermes & GLS Local',
-        mode: 'Domestic Ground Delivery',
+        name: tr('Hermes & GLS Local', 'شركتا Hermes و GLS'),
+        mode: tr('Domestic Ground Delivery', 'توصيل بري محلي'),
         count: hermesGlsCount,
         spend: hermesGlsSpend,
         share: calcShare(hermesGlsCount, hermesGlsSpend),
       },
       {
-        name: 'UPS Standard Ground',
-        mode: 'Standard Road Parcel',
+        name: tr('UPS Standard Ground', 'شركة UPS (شحن بري قياسي)'),
+        mode: tr('Standard Road Parcel', 'طرود برية قياسية'),
         count: upsCount,
         spend: upsSpend,
         share: calcShare(upsCount, upsSpend),
       },
     ];
-  }, [transactions, orders]);
+  }, [transactions, orders, tr]);
 
   // Top Customer Performance Rank
   const topCustomers = useMemo(() => {
@@ -580,7 +573,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [customers, transactions]);
 
   // ============================================================================
-  // COMPREHENSIVE TOP LIVE TICKER: ALL TOTALS, PROFITS/DEBTS & ALL OPERATIONS
+  // COMPREHENSIVE TOP LIVE TICKER: KEPT EXACTLY INTACT AS REQUESTED
   // ============================================================================
   const { tickerItems, totalsCount, operationsCount } = useMemo(() => {
     const totalsList: { text: string; positive: boolean; tag: string }[] = [];
@@ -592,7 +585,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const supBills = financialHealth?.supplierBillsTotal ?? 0;
     const supPaid = financialHealth?.supplierPaymentsTotal ?? 0;
 
-    // 1. GRAND TOTALS, SOLVENCY, PROFITS & DEBTS
     totalsList.push({
       tag: compNet >= 0 ? 'NET PROFIT' : 'NET DEBT',
       text: `CONSOLIDATED SOLVENCY: ${compNet >= 0 ? '+' : '-'}€${Math.abs(compNet).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (${financialHealth?.label || 'Balanced'})`,
@@ -646,8 +638,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     }
 
-    // 2. ALL OPERATIONS: CUSTOMER ORDERS, FINANCIAL TRANSACTIONS & SUPPLIER LEDGER
-    // 2a. All Customer Orders
     orders.forEach((o) => {
       const cust = customerMap[o.customerId];
       const custName = cust ? `${cust.firstName} ${cust.lastName}` : o.customerName || `Client #${o.customerId}`;
@@ -659,7 +649,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     });
 
-    // 2b. All Financial Ledger Transactions (Income & Expenses)
     transactions.forEach((t) => {
       const cust = t.customerId ? customerMap[t.customerId] : null;
       const isInc = t.type === 'Income';
@@ -672,7 +661,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     });
 
-    // 2c. All Supplier Bills & Payments
     supplierTransactions.forEach((st) => {
       const sup = supplierMap[st.supplierId];
       const supName = sup ? sup.name : `Supplier #${st.supplierId}`;
@@ -717,16 +705,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     tickerFilter,
   ]);
 
-  // REAL Pallet Storage Occupancy & High-Bay Warehouse Load (100% Genuine Database Telemetry)
+  // REAL Pallet Storage Occupancy & High-Bay Warehouse Load
   const storageMetrics = useMemo(() => {
-    // Bay A1: Inbound Goods & Inventory (driven by real goods supplier bills & inventory purchases)
     const goodsBillsCount = (supplierTransactions || []).filter((t) => t.type === 'Bill').length;
     const directGoodsCount = transactions.filter((t) => t.category === 'Goods/Inventory').length;
     const totalGoodsBatches = goodsBillsCount + directGoodsCount;
     const bay1Pallets = totalGoodsBatches * 4;
     const bay1Percent = Math.min(100, Math.round((bay1Pallets / 60) * 100));
 
-    // Bay B2: Outbound Dispatch Staging & Cross-dock (directly driven by real pending orders + printQueueCount)
     const pendingOrdersCount = orders.filter(
       (o) => o.status === 'Processing' || o.status === 'Ready for Dispatch'
     ).length;
@@ -734,7 +720,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const bay2Pallets = Math.ceil(bay2Packages / 5);
     const bay2Percent = Math.min(100, Math.round((bay2Packages / 30) * 100));
 
-    // Bay C1: Active Wholesale Order Consignments
     const activeOrderCount =
       orders.length > 0
         ? orders.length
@@ -742,16 +727,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const bay3Pallets = Math.ceil(activeOrderCount / 3);
     const bay3Percent = Math.min(100, Math.round((activeOrderCount / 50) * 100));
 
-    // Bay D4: Packaging Materials & Consumables Reserves
     const packagingBatches = transactions.filter(
       (t) => t.category === 'Packaging & Supplies'
     ).length;
     const bay4Pallets = packagingBatches * 2;
     const bay4Percent = Math.min(100, Math.round((packagingBatches / 15) * 100));
 
-    // Consolidated real load
     const totalRealPallets = bay1Pallets + bay2Pallets + bay3Pallets + bay4Pallets;
-    const totalCapacity = 160; // Nominal high-bay storage slots
+    const totalCapacity = 160;
     const overallPercent = Math.min(100, Math.round((totalRealPallets / totalCapacity) * 100));
 
     return {
@@ -773,15 +756,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [supplierTransactions, transactions, printQueueCount, orders]);
 
-  // Dynamic animation duration so even large operation lists scroll at a smooth, readable pace
   const marqueeDurationSeconds = Math.max(38, tickerItems.length * 4.5);
 
   return (
     <div className="space-y-6">
       {/* ================================================================= */}
-      {/* 1. COMPREHENSIVE LIVE TICKER MARQUEE (ALL TOTALS & ALL OPERATIONS) */}
+      {/* 1. COMPREHENSIVE LIVE TICKER MARQUEE (PRESERVED EXACTLY)          */}
       {/* ================================================================= */}
-      <div className="relative overflow-hidden rounded-xl bg-[#090b0e] border border-slate-800 shadow-md">
+      <div dir="ltr" className="relative overflow-hidden rounded-xl bg-[#090b0e] border border-slate-800 shadow-md">
         <div className="flex items-center">
           {/* Ticker Lead-In Badge & Mode Filter */}
           <div className="shrink-0 z-20 flex items-center gap-2 px-3 py-2 bg-slate-900 border-r border-slate-800 text-xs font-mono font-semibold tracking-wider text-slate-300">
@@ -844,7 +826,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </div>
 
-          {/* Marquee Streaming Strip (Pauses on Hover for easy inspection) */}
+          {/* Marquee Streaming Strip */}
           <div className="overflow-hidden flex-1 py-2 group">
             <div
               className="animate-ticker group-hover:[animation-play-state:paused] text-xs font-mono tabular-nums whitespace-nowrap"
@@ -860,11 +842,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       item.tag.includes('PROFIT') ||
                       item.tag.includes('REVENUE') ||
                       item.tag.includes('INCOME') ||
-                      item.tag.includes('SETTLED')
+                      item.tag.includes('SETTLED') ||
+                      item.tag.includes('CAPITAL')
                         ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
                         : item.tag.includes('DEBT') ||
                           item.tag.includes('EXPENSE') ||
-                          item.tag.includes('BILL')
+                          item.tag.includes('BILL') ||
+                          item.tag.includes('DRAW')
                         ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
                         : 'bg-slate-800 text-sky-300 border-slate-700'
                     }`}
@@ -890,10 +874,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               onClick={() => setIsExchangeTerminalOpen(true)}
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-slate-800/90 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 text-xs font-mono border border-slate-700/80 transition-all cursor-pointer"
-              title="Fullscreen Terminal"
+              title={tr('Fullscreen Terminal', 'فتح شاشة البورصة بملء الشاشة')}
             >
               <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="hidden sm:inline text-[11px]">Fullscreen</span>
+              <span className="hidden sm:inline text-[11px]">
+                {tr('Fullscreen', 'ملء الشاشة')}
+              </span>
             </button>
           </div>
         </div>
@@ -907,7 +893,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 hover:border-slate-700 transition-all shadow-xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Revenue
+              {tr('Revenue', 'الإيرادات والمقبوضات')}
             </span>
             <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
           </div>
@@ -915,7 +901,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             €{totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 flex items-center gap-1 text-[11px] text-emerald-400 font-mono">
-            <span>{incomeCount} revenue entries</span>
+            <span>
+              {incomeCount} {tr('revenue entries', 'عملية قبض')}
+            </span>
           </div>
         </div>
 
@@ -923,7 +911,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 hover:border-slate-700 transition-all shadow-xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Expenditures
+              {tr('Expenditures', 'المصاريف والمدفوعات')}
             </span>
             <TrendingDown className="w-3.5 h-3.5 text-rose-400" />
           </div>
@@ -931,11 +919,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             €{totalCosts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-mono">
-            {costCategories.length} expense classes
+            {costCategories.length} {tr('expense classes', 'فئات مصاريف')}
           </div>
         </div>
 
-        {/* Consolidated Net Financial Position (Comprehensive Solvency) */}
+        {/* Consolidated Net Financial Position */}
         <div
           className={`p-4 rounded-xl bg-[#141820] border transition-all shadow-xs ${
             financialHealth?.cardBorder || 'border-slate-800'
@@ -943,7 +931,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         >
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Consolidated Net
+              {tr('Consolidated Net', 'الصافي المالي الشامل')}
             </span>
             <span
               className={`w-2.5 h-2.5 rounded-full ${
@@ -965,15 +953,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             })}
           </div>
           <div className="mt-1 text-[11px] font-mono text-slate-400 truncate">
-            {financialHealth?.label || `${marginPercent.toFixed(1)}% margin`}
+            {financialHealth
+              ? translateHealthLabel(financialHealth.label)
+              : `${marginPercent.toFixed(1)}% ${tr('margin', 'هامش')}`}
           </div>
         </div>
 
-        {/* Goods Supplier Debt (Accounts Payable) */}
+        {/* Goods Supplier Debt */}
         <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 hover:border-slate-700 transition-all shadow-xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Supplier Payables
+              {tr('Supplier Payables', 'مستحقات الموردين')}
             </span>
             <Building2 className="w-3.5 h-3.5 text-rose-400" />
           </div>
@@ -985,12 +975,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             })}
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-            <span>{suppliers.length} goods vendors</span>
+            <span>
+              {suppliers.length} {tr('goods vendors', 'مورد بضاعة')}
+            </span>
             <button
               onClick={() => onNavigate('suppliers')}
               className="text-rose-400 hover:text-rose-300 cursor-pointer"
             >
-              Ledger →
+              {tr('Ledger →', 'السجل ←')}
             </button>
           </div>
         </div>
@@ -999,7 +991,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 hover:border-slate-700 transition-all shadow-xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Local Shipping
+              {tr('Local Shipping', 'تكاليف الشحن المحلي')}
             </span>
             <Truck className="w-3.5 h-3.5 text-sky-400" />
           </div>
@@ -1007,7 +999,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             €{shippingCostTotal.toFixed(2)}
           </div>
           <div className="mt-1 text-[11px] text-slate-400 font-mono">
-            Standard ground ({shippingRatio.toFixed(1)}% of rev)
+            {tr('Standard ground', 'شحن بري قياسي')} ({shippingRatio.toFixed(1)}%)
           </div>
         </div>
 
@@ -1015,16 +1007,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 hover:border-slate-700 transition-all shadow-xs">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-              Customer Orders
+              {tr('Customer Orders', 'طلبيات الزبائن')}
             </span>
             <Package className="w-3.5 h-3.5 text-sky-400" />
           </div>
           <div className="text-xl font-bold font-mono tabular-nums text-white">
-            {orderStats.total} Orders
+            {orderStats.total} {tr('Orders', 'طلبية')}
           </div>
           <div className="mt-1 flex items-center justify-between text-[11px]">
-            <span className="text-emerald-400 font-semibold">{orderStats.shipped} shipped</span>
-            <span className="text-amber-400 font-mono">{orderStats.pending} pending</span>
+            <span className="text-emerald-400 font-semibold">
+              {orderStats.shipped} {tr('shipped', 'مشحونة')}
+            </span>
+            <span className="text-amber-400 font-mono">
+              {orderStats.pending} {tr('pending', 'قيد التجهيز')}
+            </span>
             <button
               onClick={() => onNavigate('orders')}
               className="text-slate-400 hover:text-white cursor-pointer ml-1"
@@ -1041,26 +1037,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Multi-Tab Analytics & Operating Ledger */}
         <div className="lg:col-span-2 p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs flex flex-col justify-between space-y-4">
-          {/* Header & Period Range Selector */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base font-semibold text-white">
-                  Financial Trend & Operating Ledger
+                  {tr('Financial Trend & Operating Ledger', 'الخطوط البيانية للعمليات والأداء المالي')}
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  MULTI-VIEW
+                  {tr('MULTI-VIEW', 'متعدد العرض')}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
                 {activeTrendTab === 'ledger' &&
-                  'Real-time wholesale revenues vs operating & local parcel shipping expenses'}
+                  tr(
+                    'Real-time wholesale revenues vs operating & local parcel shipping expenses',
+                    'مقارنة الإيرادات والمقبوضات مع مصاريف التشغيل والشحن المحلي عبر الزمن'
+                  )}
                 {activeTrendTab === 'shipments_orders' &&
-                  'Chronological customer orders & standard local parcel shipments over time'}
+                  tr(
+                    'Chronological customer orders & standard local parcel shipments over time',
+                    'الخط الزمني لطلبيات الزبائن وتكاليف شحن الطرود المحلية'
+                  )}
                 {activeTrendTab === 'suppliers_goods' &&
-                  'Merchandise supplier invoices (bills) vs settlement payments over time'}
+                  tr(
+                    'Merchandise supplier invoices (bills) vs settlement payments over time',
+                    'مقارنة فواتير شراء البضاعة من الموردين مقابل الدفعات المسددة لهم'
+                  )}
                 {activeTrendTab === 'cost_carriers' &&
-                  'Operating cost distribution & standard local parcel carriers (ground only)'}
+                  tr(
+                    'Operating cost distribution & standard local parcel carriers (ground only)',
+                    'توزيع مصاريف التشغيل وشركات شحن الطرود المحلية المعتمدة'
+                  )}
               </p>
             </div>
 
@@ -1076,7 +1083,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       : 'text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {r}
+                  {r === 'ALL' ? tr('ALL', 'الكل') : r}
                 </button>
               ))}
             </div>
@@ -1093,7 +1100,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }`}
             >
               <TrendingUp className="w-3.5 h-3.5" />
-              <span>1. Financial Trend (Current)</span>
+              <span>{tr('1. Financial Trend (Current)', '1. المنحنى المالي العام')}</span>
             </button>
 
             <button
@@ -1105,7 +1112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }`}
             >
               <Truck className="w-3.5 h-3.5" />
-              <span>2. Shipments & Orders by Time</span>
+              <span>{tr('2. Shipments & Orders by Time', '2. الطلبيات والشحن زمنياً')}</span>
             </button>
 
             <button
@@ -1117,7 +1124,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }`}
             >
               <Building2 className="w-3.5 h-3.5" />
-              <span>3. Suppliers & Goods Flow</span>
+              <span>{tr('3. Suppliers & Goods Flow', '3. حركة الموردين والبضاعة')}</span>
             </button>
 
             <button
@@ -1129,13 +1136,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />
-              <span>4. Local Shipping & Costs</span>
+              <span>{tr('4. Local Shipping & Costs', '4. تفاصيل الشحن والتكاليف')}</span>
             </button>
           </div>
 
-          {/* ============================================================== */}
-          {/* TAB 1 CONTENT: CURRENT FINANCIAL TREND (REVENUES VS EXPENSES)  */}
-          {/* ============================================================== */}
+          {/* TAB 1 CONTENT */}
           {activeTrendTab === 'ledger' && (
             <>
               <div className="w-full overflow-x-auto py-1">
@@ -1236,26 +1241,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-0.5 bg-emerald-500 rounded-full" />
                     <span className="text-slate-300 font-medium">
-                      Revenues (€{totalRevenue.toFixed(2)})
+                      {tr('Revenues', 'الإيرادات')} (€{totalRevenue.toFixed(2)})
                     </span>
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="w-3 h-0.5 bg-rose-500 rounded-full border-t border-dashed" />
                     <span className="text-slate-300 font-medium">
-                      Operating & Local Shipping Costs (€{totalCosts.toFixed(2)})
+                      {tr('Operating & Local Shipping Costs', 'مصاريف التشغيل والشحن')} (€{totalCosts.toFixed(2)})
                     </span>
                   </span>
                 </div>
                 <span className="font-mono text-[11px] text-emerald-400 font-semibold">
-                  Operating Net: {netProfit >= 0 ? '+' : ''}€{netProfit.toFixed(2)}
+                  {tr('Operating Net:', 'الصافي التشغيلي:')} {netProfit >= 0 ? '+' : ''}€{netProfit.toFixed(2)}
                 </span>
               </div>
             </>
           )}
 
-          {/* ============================================================== */}
-          {/* TAB 2 CONTENT: SHIPMENTS & ORDERS TIMELINE BY DATE             */}
-          {/* ============================================================== */}
+          {/* TAB 2 CONTENT */}
           {activeTrendTab === 'shipments_orders' && (
             <div className="space-y-4">
               <div className="w-full overflow-x-auto py-1">
@@ -1361,39 +1364,44 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </svg>
               </div>
 
-              {/* Chronological Date-by-Date Strip */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2 border-t border-slate-800/80 text-xs">
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Total Customer Orders</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Total Customer Orders', 'إجمالي طلبيات الزبائن')}
+                  </span>
                   <span className="font-mono font-bold text-white text-sm">
-                    {orderStats.total} Orders (€{orderStats.totalValue.toFixed(2)})
+                    {orderStats.total} {tr('Orders', 'طلبيات')} (€{orderStats.totalValue.toFixed(2)})
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Dispatched / Shipped</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Dispatched / Shipped', 'تم الشحن والتسليم')}
+                  </span>
                   <span className="font-mono font-bold text-emerald-400 text-sm">
-                    {orderStats.shipped + orderStats.delivered} Shipped ({orderStats.fulfillmentRate.toFixed(0)}%)
+                    {orderStats.shipped + orderStats.delivered} ({orderStats.fulfillmentRate.toFixed(0)}%)
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Pending Dispatch</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Pending Dispatch', 'قيد التجهيز للشحن')}
+                  </span>
                   <span className="font-mono font-bold text-amber-400 text-sm">
-                    {orderStats.pending} In Queue
+                    {orderStats.pending} {tr('In Queue', 'بالانتظار')}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Local Parcel Cost</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Local Parcel Cost', 'تكلفة شحن الطرود')}
+                  </span>
                   <span className="font-mono font-bold text-sky-400 text-sm">
-                    €{shippingCostTotal.toFixed(2)} ({shippingTxCount} parcels)
+                    €{shippingCostTotal.toFixed(2)} ({shippingTxCount} {tr('parcels', 'طرد')})
                   </span>
                 </div>
               </div>
             </div>
           )}
 
-          {/* ============================================================== */}
-          {/* TAB 3 CONTENT: SUPPLIERS & GOODS FLOW TIMELINE                 */}
-          {/* ============================================================== */}
+          {/* TAB 3 CONTENT */}
           {activeTrendTab === 'suppliers_goods' && (
             <div className="space-y-4">
               <div className="w-full overflow-x-auto py-1">
@@ -1483,19 +1491,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <div className="grid grid-cols-3 gap-3 pt-2 border-t border-slate-800/80 text-xs">
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Goods Invoiced (Bills)</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Goods Invoiced (Bills)', 'إجمالي فواتير شراء البضاعة')}
+                  </span>
                   <span className="font-mono font-bold text-rose-400 text-sm">
                     €{(financialHealth?.supplierBillsTotal || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Paid to Suppliers</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Paid to Suppliers', 'المدفوع للموردين')}
+                  </span>
                   <span className="font-mono font-bold text-emerald-400 text-sm">
                     €{(financialHealth?.supplierPaymentsTotal || 0).toFixed(2)}
                   </span>
                 </div>
                 <div className="p-2.5 rounded-lg bg-slate-900/80 border border-slate-800">
-                  <span className="text-[10px] text-slate-400 block">Unpaid Goods Debt</span>
+                  <span className="text-[10px] text-slate-400 block">
+                    {tr('Unpaid Goods Debt', 'ديون الموردين المتبقية')}
+                  </span>
                   <span className="font-mono font-bold text-rose-400 text-sm">
                     €{(financialHealth?.totalSupplierDebt || 0).toFixed(2)}
                   </span>
@@ -1504,30 +1518,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           )}
 
-          {/* ============================================================== */}
-          {/* TAB 4 CONTENT: OPERATING COSTS & STANDARD LOCAL CARRIERS       */}
-          {/* ============================================================== */}
+          {/* TAB 4 CONTENT */}
           {activeTrendTab === 'cost_carriers' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              {/* Expense Categories */}
               <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-200">
                   <span className="flex items-center gap-1.5">
                     <Receipt className="w-3.5 h-3.5 text-rose-400" />
-                    Operating Expense Classes
+                    {tr('Operating Expense Classes', 'توزيع فئات المصاريف')}
                   </span>
                   <span className="font-mono text-rose-400">€{totalCosts.toFixed(2)}</span>
                 </div>
                 {costCategories.length === 0 ? (
                   <p className="text-xs text-slate-500 py-4 text-center">
-                    No expenses recorded yet.
+                    {tr('No expenses recorded yet.', 'لا توجد مصاريف مسجلة بعد.')}
                   </p>
                 ) : (
                   <div className="space-y-2 text-xs">
                     {costCategories.map((cat) => (
                       <div key={cat.name}>
                         <div className="flex justify-between text-slate-300 mb-0.5">
-                          <span>{cat.name}</span>
+                          <span>{translateCategory(cat.rawCategory)}</span>
                           <span className="font-mono text-slate-200">
                             €{cat.amount.toFixed(2)} ({cat.percentage.toFixed(0)}%)
                           </span>
@@ -1544,12 +1555,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
               </div>
 
-              {/* Local Parcel Carriers Summary (Strictly Standard Domestic Ground) */}
               <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 space-y-2.5">
                 <div className="flex items-center justify-between text-xs font-semibold text-slate-200">
                   <span className="flex items-center gap-1.5">
                     <Truck className="w-3.5 h-3.5 text-sky-400" />
-                    Local Parcel Carriers (Ground Only)
+                    {tr('Local Parcel Carriers (Ground Only)', 'شركات شحن الطرود المحلية (بري)')}
                   </span>
                   <span className="font-mono text-sky-400">€{shippingCostTotal.toFixed(2)}</span>
                 </div>
@@ -1562,12 +1572,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div>
                         <div className="font-semibold text-slate-200">{c.name}</div>
                         <div className="text-[10px] text-slate-500">
-                          {c.mode} · {c.count} parcels
+                          {c.mode} · {c.count} {tr('parcels', 'طرد')}
                         </div>
                       </div>
                       <div className="text-right font-mono">
                         <div className="text-sky-400 font-bold">€{c.spend.toFixed(2)}</div>
-                        <div className="text-[10px] text-slate-400">{c.share}% share</div>
+                        <div className="text-[10px] text-slate-400">
+                          {c.share}% {tr('share', 'حصة')}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1580,7 +1592,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         {/* Quick Operations & Tools */}
         <div className="space-y-4">
           <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
-            <h3 className="text-base font-semibold text-white mb-3">Operations Terminal</h3>
+            <h3 className="text-base font-semibold text-white mb-3">
+              {tr('Operations Terminal', 'محطة العمليات السريعة')}
+            </h3>
             <div className="space-y-2.5">
               <button
                 onClick={() => setIsExchangeTerminalOpen(true)}
@@ -1592,10 +1606,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                   <div>
                     <div className="text-xs font-semibold text-emerald-300">
-                      Live Exchange Terminal
+                      {tr('Live Exchange Terminal', 'شاشة البورصة المالية المباشرة')}
                     </div>
                     <div className="text-[11px] text-emerald-400/80">
-                      Fullscreen live financial market monitor
+                      {tr(
+                        'Fullscreen live financial market monitor',
+                        'شاشة مراقبة حية بملء الشاشة للعمليات والسيولة'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1604,60 +1621,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
               <button
                 onClick={() => onOpenTransactionModal()}
-                className="w-full flex items-center justify-between p-3 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-left transition-all group cursor-pointer"
+                className="w-full flex items-center justify-between p-3.5 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/40 hover:border-rose-400 text-left transition-all group cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-rose-600/10 text-rose-500 group-hover:bg-rose-600/20">
+                  <div className="p-2 rounded-md bg-rose-600 text-white">
                     <PlusCircle className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">Record Transaction</div>
-                    <div className="text-[11px] text-slate-400">
-                      Order revenue or local shipping voucher
+                    <div className="text-xs font-bold text-white">
+                      {tr('Record Entry (Income / Expense)', 'تسجيل قيد جديد (إيراد / مصروف)')}
+                    </div>
+                    <div className="text-[11px] text-slate-300">
+                      {tr(
+                        'Customer payments, shipping, supplier purchases & personal funds',
+                        'دفعات الزبائن، الشحن، المشتريات، والمال الخاص من نافذة موحدة'
+                      )}
                     </div>
                   </div>
                 </div>
-                <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300" />
+                <ArrowUpRight className="w-4 h-4 text-rose-300 group-hover:text-white" />
               </button>
-
-              {/* Quick Owner Capital Injection & Personal Cash Withdrawal Dual Buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => onOpenTransactionModal('Owner Capital Injection')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg bg-teal-950/30 hover:bg-teal-900/40 border border-teal-500/30 hover:border-teal-400 text-left transition-all cursor-pointer"
-                  title="إضافة نقود من المال الخاص (Inject Personal Funds)"
-                >
-                  <div className="p-1.5 rounded bg-teal-500/20 text-teal-300 shrink-0">
-                    <ArrowDownLeft className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-teal-300 truncate">
-                      + مال خاص (إيداع)
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">
-                      +€{(financialHealth?.ownerCapitalInjected || 0).toFixed(0)}
-                    </div>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => onOpenTransactionModal('Personal Withdrawal')}
-                  className="flex items-center gap-2 p-2.5 rounded-lg bg-pink-950/30 hover:bg-pink-900/40 border border-pink-500/30 hover:border-pink-400 text-left transition-all cursor-pointer"
-                  title="سحب نقود للاستخدام الشخصي (Personal Cash Withdrawal)"
-                >
-                  <div className="p-1.5 rounded bg-pink-500/20 text-pink-300 shrink-0">
-                    <Wallet className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold text-pink-300 truncate">
-                      - سحب شخصي
-                    </div>
-                    <div className="text-[10px] text-slate-400 font-mono truncate">
-                      -€{(financialHealth?.personalWithdrawals || 0).toFixed(0)}
-                    </div>
-                  </div>
-                </button>
-              </div>
 
               <button
                 onClick={() => (onOpenOrderModal ? onOpenOrderModal() : onNavigate('orders'))}
@@ -1668,9 +1651,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Package className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">New Customer Order</div>
+                    <div className="text-xs font-semibold text-slate-200">
+                      {tr('New Customer Order', 'إنشاء طلبية زبون جديدة')}
+                    </div>
                     <div className="text-[11px] text-slate-400">
-                      Dispatch consignment & assign tracking
+                      {tr(
+                        'Paid, partial, or unpaid on credit + tracking',
+                        'بدفع فوري أو آجل على الحساب مع رقم التتبع'
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1686,8 +1674,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <UserPlus className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">New Client Account</div>
-                    <div className="text-[11px] text-slate-400">Add shipping recipient</div>
+                    <div className="text-xs font-semibold text-slate-200">
+                      {tr('New Client Account', 'إضافة حساب زبون جديد')}
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {tr('Add shipping recipient & ledger account', 'إضافة عنوان المستلم وحسابه المالي')}
+                    </div>
                   </div>
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-slate-500 group-hover:text-slate-300" />
@@ -1702,9 +1694,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Printer className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">6er Etiketten Bogen</div>
+                    <div className="text-xs font-semibold text-slate-200">
+                      {tr('6er Etiketten Bogen (A4)', 'طباعة ملصقات الشحن (6 في A4)')}
+                    </div>
                     <div className="text-[11px] text-slate-400">
-                      {printQueueCount} packages ready in queue
+                      {printQueueCount}{' '}
+                      {tr('packages ready in queue', 'ملصق جاهز في طابور الطباعة')}
                     </div>
                   </div>
                 </div>
@@ -1719,13 +1714,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* 4. ENTERPRISE WAREHOUSE STORAGE BAYS & LOCAL CARRIERS    */}
       {/* ======================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Real Pallet High-Bay Storage Tracker (100% Genuine Database Telemetry) */}
+        {/* Real Pallet High-Bay Storage Tracker */}
         <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4 text-rose-500" />
               <h3 className="text-sm font-semibold text-white">
-                Pallet High-Bay Storage Tracker
+                {tr('Pallet High-Bay Storage Tracker', 'مؤشر إشغال أرفف المستودع والطبليات')}
               </h3>
             </div>
             <span
@@ -1737,17 +1732,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   : 'bg-slate-800 text-slate-400 border border-slate-700'
               }`}
             >
-              {storageMetrics.overallPercent}% REAL LOAD
+              {storageMetrics.overallPercent}% {tr('REAL LOAD', 'إشغال فعلي')}
             </span>
           </div>
 
           <div className="space-y-3.5 text-xs">
-            {/* Bay A1: Inbound Goods & Merchandise */}
+            {/* Bay A1 */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1">
-                <span className="font-medium">Bay A1 (Inbound Goods & Merchandise)</span>
+                <span className="font-medium">
+                  {tr('Bay A1 (Inbound Goods & Merchandise)', 'القسم A1 (البضائع والمخزون الوارد)')}
+                </span>
                 <span className="font-mono text-emerald-400 font-semibold">
-                  {storageMetrics.bay1Percent}% ({storageMetrics.bay1Pallets} Pallets)
+                  {storageMetrics.bay1Percent}% ({storageMetrics.bay1Pallets} {tr('Pallets', 'طبلية')})
                 </span>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -1757,16 +1754,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                {storageMetrics.totalGoodsBatches} Goods delivery invoices staged
+                {storageMetrics.totalGoodsBatches}{' '}
+                {tr('Goods delivery invoices staged', 'دفعات بضائع موردين مخزنة')}
               </span>
             </div>
 
-            {/* Bay B2: Outbound Dispatch Staging */}
+            {/* Bay B2 */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1">
-                <span className="font-medium">Bay B2 (Outbound Cross-Dock & Dispatch)</span>
+                <span className="font-medium">
+                  {tr('Bay B2 (Outbound Cross-Dock & Dispatch)', 'القسم B2 (تجهيز الطرود للشحن الصادر)')}
+                </span>
                 <span className="font-mono text-sky-400 font-semibold">
-                  {storageMetrics.bay2Percent}% ({storageMetrics.bay2Packages} Pkgs)
+                  {storageMetrics.bay2Percent}% ({storageMetrics.bay2Packages} {tr('Pkgs', 'طرد')})
                 </span>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -1776,16 +1776,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                {storageMetrics.bay2Packages} parcels staged for local carrier pickup
+                {storageMetrics.bay2Packages}{' '}
+                {tr('parcels staged for local carrier pickup', 'طرود مجهزة لاستلام شركة الشحن')}
               </span>
             </div>
 
-            {/* Bay C1: Customer Orders Fulfillment */}
+            {/* Bay C1 */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1">
-                <span className="font-medium">Bay C1 (Active Orders Consignment Storage)</span>
+                <span className="font-medium">
+                  {tr('Bay C1 (Active Orders Consignment Storage)', 'القسم C1 (طلبيات الزبائن الفعالة)')}
+                </span>
                 <span className="font-mono text-amber-400 font-semibold">
-                  {storageMetrics.bay3Percent}% ({storageMetrics.activeOrderCount} Orders)
+                  {storageMetrics.bay3Percent}% ({storageMetrics.activeOrderCount} {tr('Orders', 'طلبيات')})
                 </span>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -1795,16 +1798,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Wholesale client orders currently stored & fulfilled
+                {tr(
+                  'Wholesale client orders currently stored & fulfilled',
+                  'طلبيات الجملة المسجلة والمنفذة للزبائن'
+                )}
               </span>
             </div>
 
-            {/* Bay D4: Packaging Materials & Consumables */}
+            {/* Bay D4 */}
             <div>
               <div className="flex justify-between text-slate-300 mb-1">
-                <span className="font-medium">Bay D4 (Packaging Boxes & Supplies)</span>
+                <span className="font-medium">
+                  {tr('Bay D4 (Packaging Boxes & Supplies)', 'القسم D4 (كراتين ومواد التغليف)')}
+                </span>
                 <span className="font-mono text-purple-400 font-semibold">
-                  {storageMetrics.bay4Percent}% ({storageMetrics.packagingBatches} Batches)
+                  {storageMetrics.bay4Percent}% ({storageMetrics.packagingBatches} {tr('Batches', 'دفعات')})
                 </span>
               </div>
               <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
@@ -1814,40 +1822,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 />
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Boxes, cartons, tape, and packing consumables
+                {tr(
+                  'Boxes, cartons, tape, and packing consumables',
+                  'صناديق الكرتون، الأشرطة اللاصقة، ومستلزمات التغليف'
+                )}
               </span>
             </div>
           </div>
 
           <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
             <span>
-              Real Occupied:{' '}
+              {tr('Real Occupied:', 'المشغول فعلياً:')}{' '}
               <strong className="text-white font-mono">{storageMetrics.totalRealPallets}</strong> /{' '}
-              {storageMetrics.totalCapacity} Pallet Spaces
+              {storageMetrics.totalCapacity} {tr('Pallet Spaces', 'موضع طبلية')}
             </span>
             <span className="text-emerald-400 font-mono font-semibold">
               {Math.max(0, storageMetrics.totalCapacity - storageMetrics.totalRealPallets)}{' '}
-              Available
+              {tr('Available', 'متاح')}
             </span>
           </div>
         </div>
 
-        {/* Standard Local Parcel Carriers Hub (Ground Only — No Air Freight) */}
+        {/* Standard Local Parcel Carriers Hub */}
         <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Truck className="w-4 h-4 text-sky-400" />
               <div>
                 <h3 className="text-sm font-semibold text-white">
-                  Standard Local Parcel Carriers
+                  {tr('Standard Local Parcel Carriers', 'شركات شحن الطرود المحلية')}
                 </h3>
                 <p className="text-[10px] text-slate-400">
-                  Domestic ground shipping only (No air freight)
+                  {tr('Domestic ground shipping only (No air freight)', 'شحن بري محلي قياسي للطرود')}
                 </p>
               </div>
             </div>
             <span className="text-[11px] font-mono text-sky-400 font-bold">
-              €{shippingCostTotal.toFixed(2)} Total
+              €{shippingCostTotal.toFixed(2)} {tr('Total', 'الإجمالي')}
             </span>
           </div>
 
@@ -1860,7 +1871,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <div className="font-semibold text-slate-200">{car.name}</div>
                   <div className="text-[11px] text-slate-400">
-                    {car.count} parcels · {car.share}% volume · {car.mode}
+                    {car.count} {tr('parcels', 'طرد')} · {car.share}% {tr('volume', 'الحصة')} ·{' '}
+                    {car.mode}
                   </div>
                 </div>
                 <div className="text-right">
@@ -1868,7 +1880,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     €{car.spend.toFixed(2)}
                   </div>
                   <div className="text-[10px] text-emerald-400 font-mono">
-                    Ground Parcel
+                    {tr('Ground Parcel', 'شحن بري')}
                   </div>
                 </div>
               </div>
@@ -1882,21 +1894,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-amber-400" />
               <h3 className="text-sm font-semibold text-white">
-                Client Margin Contribution Rank
+                {tr('Client Margin Contribution Rank', 'أعلى الزبائن مساهمة في الإيرادات')}
               </h3>
             </div>
             <button
               onClick={() => onNavigate('customers')}
               className="text-[11px] text-rose-400 hover:text-rose-300 font-medium cursor-pointer"
             >
-              All Clients →
+              {tr('All Clients →', 'كل الزبائن ←')}
             </button>
           </div>
 
           <div className="space-y-2.5">
             {topCustomers.length === 0 ? (
               <div className="text-xs text-slate-500 py-4 text-center">
-                No client accounts recorded yet.
+                {tr('No client accounts recorded yet.', 'لا توجد حسابات زبائن مسجلة بعد.')}
               </div>
             ) : (
               topCustomers.map((tc, idx) => (
@@ -1922,7 +1934,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       €{tc.rev.toFixed(2)}
                     </div>
                     <div className="text-[10px] text-slate-400">
-                      €{tc.profit.toFixed(2)} net
+                      €{tc.profit.toFixed(2)} {tr('net', 'صافي')}
                     </div>
                   </div>
                 </div>
@@ -1944,14 +1956,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-semibold text-white">
-                  Customer Orders & Tracking Monitor
+                  {tr('Customer Orders & Tracking Monitor', 'مراقبة طلبيات الزبائن وأرقام التتبع')}
                 </h3>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/15 text-sky-300 border border-sky-500/30">
-                  {orderStats.total} TOTAL
+                  {orderStats.total} {tr('TOTAL', 'إجمالي')}
                 </span>
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                Live consignment fulfillment pipeline, standard local parcel carriers (DHL, DPD, Hermes, GLS, UPS), and tracking numbers
+                {tr(
+                  'Live consignment fulfillment pipeline, standard local parcel carriers (DHL, DPD, Hermes, GLS, UPS), and tracking numbers',
+                  'حالة تنفيذ الطلبيات، شركات الشحن المحلي (DHL, DPD, Hermes, GLS, UPS)، وأرقام التتبع المباشرة'
+                )}
               </p>
             </div>
           </div>
@@ -1962,25 +1977,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ Create Order</span>
+              <span>{tr('+ Create Order', '+ طلبية جديدة')}</span>
             </button>
             <button
               onClick={() => onNavigate('orders')}
               className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-300 hover:text-white border border-slate-700 transition-colors cursor-pointer"
             >
-              All Orders ({orders.length}) →
+              {tr(`All Orders (${orders.length}) →`, `كل الطلبيات (${orders.length}) ←`)}
             </button>
           </div>
         </div>
 
         {orders.length === 0 ? (
           <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400 space-y-2">
-            <p>No customer orders recorded yet.</p>
+            <p>{tr('No customer orders recorded yet.', 'لا توجد طلبيات مسجلة بعد.')}</p>
             <button
               onClick={() => (onOpenOrderModal ? onOpenOrderModal() : onNavigate('orders'))}
               className="text-xs font-semibold text-rose-400 hover:text-rose-300 cursor-pointer"
             >
-              + Create your first customer order to track shipment and assign local carrier tracking number
+              {tr(
+                '+ Create your first customer order to track shipment and assign local carrier tracking number',
+                '+ أنشئ أول طلبية زبون لتتبع الشحنة وإضافة رقم التتبع'
+              )}
             </button>
           </div>
         ) : (
@@ -1988,12 +2006,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 font-semibold">
-                  <th className="py-2.5 px-3">Order #</th>
-                  <th className="py-2.5 px-3">Customer</th>
-                  <th className="py-2.5 px-3">Goods / Items</th>
-                  <th className="py-2.5 px-3 text-right">Value (€)</th>
-                  <th className="py-2.5 px-3 text-center">Status</th>
-                  <th className="py-2.5 px-3">Local Carrier & Tracking</th>
+                  <th className="py-2.5 px-3">{tr('Order #', 'رقم الطلبية')}</th>
+                  <th className="py-2.5 px-3">{tr('Customer', 'الزبون')}</th>
+                  <th className="py-2.5 px-3">{tr('Goods / Items', 'البضاعة / الأصناف')}</th>
+                  <th className="py-2.5 px-3 text-right">{tr('Value (€)', 'القيمة (€)')}</th>
+                  <th className="py-2.5 px-3 text-center">{tr('Status', 'حالة الطلبية')}</th>
+                  <th className="py-2.5 px-3">{tr('Local Carrier & Tracking', 'شركة الشحن ورقم التتبع')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-sans">
@@ -2008,7 +2026,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         {ord.orderNumber}
                       </td>
                       <td className="py-2.5 px-3 text-slate-300">
-                        {cust ? `${cust.firstName} ${cust.lastName}` : ord.customerName || 'Customer'}
+                        {cust ? `${cust.firstName} ${cust.lastName}` : ord.customerName || tr('Customer', 'زبون')}
                       </td>
                       <td
                         className="py-2.5 px-3 text-slate-400 max-w-xs truncate"
@@ -2022,15 +2040,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         {isShipped ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <Truck className="w-3 h-3" /> Shipped
+                            <Truck className="w-3 h-3" /> {translateOrderStatus('Shipped')}
                           </span>
                         ) : isDelivered ? (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-600/20 text-emerald-300 border border-emerald-500/40">
-                            <CheckCircle2 className="w-3 h-3" /> Delivered
+                            <CheckCircle2 className="w-3 h-3" /> {translateOrderStatus('Delivered')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                            <Clock className="w-3 h-3" /> {ord.status}
+                            <Clock className="w-3 h-3" /> {translateOrderStatus(ord.status)}
                           </span>
                         )}
                       </td>
@@ -2045,7 +2063,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             </span>
                           </div>
                         ) : (
-                          <span className="text-slate-500 text-[11px]">No tracking yet</span>
+                          <span className="text-slate-500 text-[11px]">
+                            {tr('No tracking yet', 'لا يوجد رقم تتبع بعد')}
+                          </span>
                         )}
                       </td>
                     </tr>
@@ -2064,34 +2084,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2.5">
             <h3 className="text-base font-semibold text-white">
-              Live Operations Activity Feed
+              {tr('Live Operations Activity Feed', 'أحدث العمليات المالية والتشغيلية')}
             </h3>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-800 text-slate-300">
-              {transactions.length} TOTAL RECORDS
+              {transactions.length} {tr('TOTAL RECORDS', 'إجمالي القيود')}
             </span>
           </div>
           <button
             onClick={() => onNavigate('finances')}
             className="text-xs font-medium text-rose-400 hover:text-rose-300 cursor-pointer"
           >
-            Full Ledger →
+            {tr('Full Ledger →', 'سجل العمليات الكامل ←')}
           </button>
         </div>
 
         {transactions.length === 0 ? (
           <div className="text-center py-8 text-xs text-slate-500">
-            No financial records found. Click &quot;Record Transaction&quot; to begin.
+            {tr(
+              'No financial records found. Click "Record Transaction" to begin.',
+              'لا توجد قيود مالية مسجلة بعد. اضغط على "تسجيل قيد" للبدء.'
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800/80 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="py-2.5">Date</th>
-                  <th className="py-2.5">Category</th>
-                  <th className="py-2.5">Description</th>
-                  <th className="py-2.5">Account</th>
-                  <th className="py-2.5 text-right">Amount</th>
+                  <th className="py-2.5">{tr('Date', 'التاريخ')}</th>
+                  <th className="py-2.5">{tr('Category', 'الفئة / القسم')}</th>
+                  <th className="py-2.5">{tr('Description', 'البيان والتفاصيل')}</th>
+                  <th className="py-2.5">{tr('Account', 'الحساب / الزبون')}</th>
+                  <th className="py-2.5 text-right">{tr('Amount', 'المبلغ')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-xs">
@@ -2119,7 +2142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               : 'bg-rose-500/10 text-rose-400'
                           }`}
                         >
-                          {t.category === 'Shipping' ? 'Local Shipping' : t.category}
+                          {translateCategory(t.category)}
                         </span>
                       </td>
                       <td className="py-3 text-slate-200 font-medium">

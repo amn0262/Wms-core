@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Supplier, SupplierTransaction } from '../types';
 import { SupplierLedgerModal } from './SupplierLedgerModal';
+import { useI18n } from '../utils/i18n';
 
 interface SuppliersViewProps {
   suppliers: Supplier[];
@@ -42,6 +43,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
   onDeleteSupplier,
   onDeleteTransaction,
 }) => {
+  const { tr, translatePaymentMethod } = useI18n();
   const [activeSubTab, setActiveSubTab] = useState<'accounts' | 'operations'>('accounts');
   const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
   const [searchTerm, setSearchTerm] = useState('');
@@ -284,17 +286,23 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-rose-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <ArrowDownLeft className="w-4 h-4" />
-              Total Outstanding Goods Debt
+              {tr('Total Outstanding Goods Debt', 'إجمالي ديون البضائع المستحقة')}
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30">
-              {overallStats.debtCount} {overallStats.debtCount === 1 ? 'Supplier' : 'Suppliers'}
+              {overallStats.debtCount}{' '}
+              {overallStats.debtCount === 1
+                ? tr('Supplier', 'مورد')
+                : tr('Suppliers', 'موردين')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-rose-400">
             €{overallStats.totalDebt.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Accounts payable: total money currently owed for inventory & goods
+            {tr(
+              'Accounts payable: total money currently owed for inventory & goods',
+              'الحسابات الدائنة: إجمالي المبالغ المستحقة حالياً للموردين مقابل البضائع والمخزون'
+            )}
           </p>
         </div>
 
@@ -302,17 +310,23 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <ArrowUpRight className="w-4 h-4" />
-              Advance Goods Credits
+              {tr('Advance Goods Credits', 'رصيد دائن مقدم للموردين')}
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              {overallStats.creditCount} {overallStats.creditCount === 1 ? 'Supplier' : 'Suppliers'}
+              {overallStats.creditCount}{' '}
+              {overallStats.creditCount === 1
+                ? tr('Supplier', 'مورد')
+                : tr('Suppliers', 'موردين')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-400">
             €{overallStats.totalCredit.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Overpayments or advance deposits held with merchandise suppliers
+            {tr(
+              'Overpayments or advance deposits held with merchandise suppliers',
+              'المدفوعات الزائدة أو العربون المقدم لدى موردي البضائع'
+            )}
           </p>
         </div>
 
@@ -320,10 +334,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-300 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <Scale className="w-4 h-4 text-sky-400" />
-              Net Payables Exposure
+              {tr('Net Payables Exposure', 'صافي التزامات الموردين')}
             </span>
             <span className="text-[11px] font-mono text-slate-500">
-              {suppliers.length} Total Suppliers
+              {suppliers.length} {tr('Total Suppliers', 'إجمالي الموردين')}
             </span>
           </div>
           <div
@@ -339,10 +353,16 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
             {overallStats.netExposure > 0
-              ? 'Net payable balance across all merchandise suppliers'
+              ? tr(
+                  'Net payable balance across all merchandise suppliers',
+                  'صافي الرصيد المستحق الدفع لجميع موردي البضائع'
+                )
               : overallStats.netExposure < 0
-              ? 'Net surplus in supplier deposits'
-              : 'All merchandise supplier accounts are fully settled'}
+              ? tr('Net surplus in supplier deposits', 'صافي فائض الودائع لدى الموردين')
+              : tr(
+                  'All merchandise supplier accounts are fully settled',
+                  'جميع حسابات موردي البضائع مسددة بالكامل'
+                )}
           </p>
         </div>
 
@@ -350,18 +370,18 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-300 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <Receipt className="w-4 h-4 text-amber-400" />
-              Total Goods Invoiced vs Paid
+              {tr('Total Goods Invoiced vs Paid', 'إجمالي الفواتير مقابل المدفوع')}
             </span>
             <span className="text-[11px] font-mono text-slate-500">
-              {supplierTransactions.length} Entries
+              {supplierTransactions.length} {tr('Entries', 'عملية')}
             </span>
           </div>
           <div className="flex items-baseline justify-between text-sm font-mono mt-1">
-            <span className="text-slate-400 text-xs">Billed:</span>
+            <span className="text-slate-400 text-xs">{tr('Billed:', 'المفوتر:')}</span>
             <span className="text-white font-bold">€{overallStats.sumBills.toFixed(2)}</span>
           </div>
           <div className="flex items-baseline justify-between text-sm font-mono mt-1">
-            <span className="text-slate-400 text-xs">Paid:</span>
+            <span className="text-slate-400 text-xs">{tr('Paid:', 'المدفوع:')}</span>
             <span className="text-emerald-400 font-bold">€{overallStats.sumPayments.toFixed(2)}</span>
           </div>
         </div>
@@ -374,11 +394,17 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-rose-400" />
               <h3 className="text-sm font-semibold text-white">
-                Supplier Merchandise Purchases (Bills) vs Settlements Trend
+                {tr(
+                  'Supplier Merchandise Purchases (Bills) vs Settlements Trend',
+                  'مؤشر فواتير شراء البضائع مقابل دفعات تسوية الموردين'
+                )}
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Chronological comparison of invoiced goods deliveries vs payments sent to suppliers
+              {tr(
+                'Chronological comparison of invoiced goods deliveries vs payments sent to suppliers',
+                'مقارنة زمنية بين فواتير استلام البضائع والدفعات المرسلة للموردين'
+              )}
             </p>
           </div>
           <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
@@ -392,7 +418,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {r}
+                {r === 'ALL' ? tr('ALL', 'الكل') : r}
               </button>
             ))}
           </div>
@@ -483,15 +509,19 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <div className="flex items-center gap-5">
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-rose-500 rounded-full" />
-              <span className="text-slate-300">Goods Invoiced / Bills (€{overallStats.sumBills.toFixed(2)})</span>
+              <span className="text-slate-300">
+                {tr('Goods Invoiced / Bills', 'فواتير البضائع المستلمة')} (€{overallStats.sumBills.toFixed(2)})
+              </span>
             </span>
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-emerald-500 rounded-full border-t border-dashed" />
-              <span className="text-slate-300">Supplier Payments (€{overallStats.sumPayments.toFixed(2)})</span>
+              <span className="text-slate-300">
+                {tr('Supplier Payments', 'دفعات الموردين')} (€{overallStats.sumPayments.toFixed(2)})
+              </span>
             </span>
           </div>
           <span className="font-mono text-rose-400 font-semibold">
-            Net Owed: €{overallStats.totalDebt.toFixed(2)}
+            {tr('Net Owed:', 'صافي الدين المستحق:')} €{overallStats.totalDebt.toFixed(2)}
           </span>
         </div>
       </div>
@@ -509,7 +539,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Supplier Accounts ({suppliers.length})
+              {tr('Supplier Accounts', 'حسابات الموردين')} ({suppliers.length})
             </button>
             <button
               onClick={() => setActiveSubTab('operations')}
@@ -519,7 +549,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              All Goods Bills & Payments Log ({supplierTransactions.length})
+              {tr('All Goods Bills & Payments Log', 'سجل جميع فواتير البضائع والدفعات')} ({supplierTransactions.length})
             </button>
           </div>
 
@@ -532,8 +562,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder={
                 activeSubTab === 'accounts'
-                  ? 'Search merchandise suppliers by company name, contact person, or notes...'
-                  : 'Search bills & payments by supplier, invoice reference, or item description...'
+                  ? tr(
+                      'Search merchandise suppliers by company name, contact person, or notes...',
+                      'ابحث عن الموردين حسب اسم الشركة، جهة الاتصال، أو الملاحظات...'
+                    )
+                  : tr(
+                      'Search bills & payments by supplier, invoice reference, or item description...',
+                      'ابحث في الفواتير والدفعات حسب المورد، رقم الفاتورة، أو الوصف...'
+                    )
               }
               className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
@@ -546,7 +582,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               className="px-3.5 py-2 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-xs font-semibold text-rose-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowDownLeft className="w-3.5 h-3.5" />
-              <span>+ Record Goods Bill</span>
+              <span>{tr('+ Record Goods Bill', '+ تسجيل فاتورة بضاعة')}</span>
             </button>
 
             <button
@@ -554,7 +590,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               className="px-3.5 py-2 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>+ Record Payment</span>
+              <span>{tr('+ Record Payment', '+ تسجيل دفعة لمورد')}</span>
             </button>
 
             <button
@@ -562,7 +598,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
               className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ New Goods Supplier</span>
+              <span>{tr('+ New Goods Supplier', '+ مورد بضائع جديد')}</span>
             </button>
           </div>
         </div>
@@ -571,7 +607,9 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         {activeSubTab === 'accounts' ? (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
             <div className="flex items-center gap-1.5">
-              <span className="text-slate-400 font-medium mr-1 text-[11px]">Filter Account:</span>
+              <span className="text-slate-400 font-medium mr-1 text-[11px]">
+                {tr('Filter Account:', 'تصفية الحساب:')}
+              </span>
               <button
                 onClick={() => setStatusFilter('ALL')}
                 className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
@@ -580,7 +618,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                All ({suppliers.length})
+                {tr('All', 'الكل')} ({suppliers.length})
               </button>
               <button
                 onClick={() => setStatusFilter('DEBT')}
@@ -590,7 +628,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                In Debt ({overallStats.debtCount})
+                {tr('In Debt', 'علينا دين')} ({overallStats.debtCount})
               </button>
               <button
                 onClick={() => setStatusFilter('CREDIT')}
@@ -600,7 +638,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                In Surplus ({overallStats.creditCount})
+                {tr('In Surplus', 'رصيد فائض')} ({overallStats.creditCount})
               </button>
               <button
                 onClick={() => setStatusFilter('SETTLED')}
@@ -610,28 +648,28 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Settled ({overallStats.settledCount})
+                {tr('Settled', 'مسدد')} ({overallStats.settledCount})
               </button>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-slate-400 text-[11px]">Sort By:</span>
+              <span className="text-slate-400 text-[11px]">{tr('Sort By:', 'ترتيب حسب:')}</span>
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
                 className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none"
               >
-                <option value="debt">Highest Debt / Balance First</option>
-                <option value="name">Supplier Name (A-Z)</option>
-                <option value="bills">Highest Invoiced Volume</option>
-                <option value="payments">Highest Paid Volume</option>
+                <option value="debt">{tr('Highest Debt / Balance First', 'الأعلى ديناً أولاً')}</option>
+                <option value="name">{tr('Supplier Name (A-Z)', 'اسم المورد (أ-ي)')}</option>
+                <option value="bills">{tr('Highest Invoiced Volume', 'الأعلى حجماً في الفواتير')}</option>
+                <option value="payments">{tr('Highest Paid Volume', 'الأعلى حجماً في الدفعات')}</option>
               </select>
             </div>
           </div>
         ) : (
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-slate-400 text-[11px]">Type:</span>
+              <span className="text-slate-400 text-[11px]">{tr('Type:', 'النوع:')}</span>
               {(['ALL', 'Bill', 'Payment'] as const).map((t) => (
                 <button
                   key={t}
@@ -642,7 +680,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                       : 'bg-slate-900 text-slate-400 hover:text-slate-200'
                   }`}
                 >
-                  {t === 'ALL' ? 'All Entries' : t === 'Bill' ? 'Goods Bills (Invoiced)' : 'Payments (Settled)'}
+                  {t === 'ALL'
+                    ? tr('All Entries', 'جميع السجلات')
+                    : t === 'Bill'
+                    ? tr('Goods Bills (Invoiced)', 'فواتير البضائع')
+                    : tr('Payments (Settled)', 'الدفعات المسددة')}
                 </button>
               ))}
 
@@ -651,7 +693,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                 onChange={(e) => setSelectedSupplierFilter(e.target.value)}
                 className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none ml-2"
               >
-                <option value="ALL">All Suppliers</option>
+                <option value="ALL">{tr('All Suppliers', 'جميع الموردين')}</option>
                 {suppliers.map((s) => (
                   <option key={s.id} value={String(s.id)}>
                     {s.name}
@@ -661,14 +703,14 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              <span className="text-slate-400 text-[11px]">From:</span>
+              <span className="text-slate-400 text-[11px]">{tr('From:', 'من:')}</span>
               <input
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white font-mono"
               />
-              <span className="text-slate-400 text-[11px]">To:</span>
+              <span className="text-slate-400 text-[11px]">{tr('To:', 'إلى:')}</span>
               <input
                 type="date"
                 value={endDate}
@@ -685,7 +727,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                   }}
                   className="text-slate-400 hover:text-white flex items-center gap-1 px-2 py-1 cursor-pointer"
                 >
-                  <RotateCcw className="w-3 h-3" /> Reset
+                  <RotateCcw className="w-3 h-3" /> {tr('Reset', 'إعادة ضبط')}
                 </button>
               )}
             </div>
@@ -698,16 +740,21 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
         filteredSuppliers.length === 0 ? (
           <div className="p-12 text-center rounded-xl bg-[#141820] border border-slate-800 text-slate-400 space-y-3">
             <Building2 className="w-10 h-10 text-slate-600 mx-auto" />
-            <h3 className="text-sm font-semibold text-slate-200">No Goods Suppliers Found</h3>
+            <h3 className="text-sm font-semibold text-slate-200">
+              {tr('No Goods Suppliers Found', 'لم يتم العثور على موردي بضائع')}
+            </h3>
             <p className="text-xs text-slate-400 max-w-md mx-auto">
-              Add your merchandise & inventory suppliers to manage delivery bills, settlement payments, and live accounts payable balances.
+              {tr(
+                'Add your merchandise & inventory suppliers to manage delivery bills, settlement payments, and live accounts payable balances.',
+                'أضف موردي البضائع والمخزون لإدارة فواتير التوريد، دفعات التسوية، وأرصدة الديون المستحقة مباشرة.'
+              )}
             </p>
             <button
               onClick={() => onOpenSupplierModal()}
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs"
             >
               <PlusCircle className="w-4 h-4" />
-              <span>Add First Goods Supplier</span>
+              <span>{tr('Add First Goods Supplier', 'إضافة أول مورد بضائع')}</span>
             </button>
           </div>
         ) : (
@@ -715,13 +762,13 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-semibold">
-                  <th className="py-3.5 px-4">Supplier Name</th>
-                  <th className="py-3.5 px-4">Contact Person & Info</th>
-                  <th className="py-3.5 px-4 text-right">Invoiced (Bills)</th>
-                  <th className="py-3.5 px-4 text-right">Paid (Settled)</th>
-                  <th className="py-3.5 px-4 text-right">Account Balance</th>
-                  <th className="py-3.5 px-4 text-center">Status</th>
-                  <th className="py-3.5 px-4 text-right">Actions</th>
+                  <th className="py-3.5 px-4">{tr('Supplier Name', 'اسم المورد')}</th>
+                  <th className="py-3.5 px-4">{tr('Contact Person & Info', 'جهة الاتصال والمعلومات')}</th>
+                  <th className="py-3.5 px-4 text-right">{tr('Invoiced (Bills)', 'المفوتر (الفواتير)')}</th>
+                  <th className="py-3.5 px-4 text-right">{tr('Paid (Settled)', 'المدفوع (المسدد)')}</th>
+                  <th className="py-3.5 px-4 text-right">{tr('Account Balance', 'رصيد الحساب')}</th>
+                  <th className="py-3.5 px-4 text-center">{tr('Status', 'الحالة')}</th>
+                  <th className="py-3.5 px-4 text-right">{tr('Actions', 'إجراءات')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/80">
@@ -786,22 +833,26 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                           €{Math.abs(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="text-[10px] text-slate-500 font-sans">
-                          {isDebt ? 'We owe' : isCredit ? 'Surplus credit' : 'Balanced'}
+                          {isDebt
+                            ? tr('We owe', 'مستحق علينا')
+                            : isCredit
+                            ? tr('Surplus credit', 'رصيد فائض لنا')
+                            : tr('Balanced', 'متوازن')}
                         </div>
                       </td>
 
                       <td className="py-3.5 px-4 text-center whitespace-nowrap">
                         {isDebt ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                            <AlertCircle className="w-3 h-3" /> Debt (Payable)
+                            <AlertCircle className="w-3 h-3" /> {tr('Debt (Payable)', 'دين (مستحق الدفع)')}
                           </span>
                         ) : isCredit ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3" /> Surplus (Credit)
+                            <CheckCircle2 className="w-3 h-3" /> {tr('Surplus (Credit)', 'فائض (دائن)')}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-slate-800 text-slate-400 border border-slate-700">
-                            Settled
+                            {tr('Settled', 'مسدد')}
                           </span>
                         )}
                       </td>
@@ -810,11 +861,11 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setActiveLedgerSupplier(supplier)}
-                            title="View Statement of Account / Ledger"
+                            title={tr('View Statement of Account / Ledger', 'عرض كشف الحساب / الدفتر')}
                             className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[11px] font-semibold text-slate-300 hover:text-white border border-slate-700 transition-colors flex items-center gap-1 cursor-pointer"
                           >
                             <BookOpen className="w-3.5 h-3.5 text-sky-400" />
-                            <span>Ledger</span>
+                            <span>{tr('Ledger', 'كشف الحساب')}</span>
                           </button>
 
                           {isDebt && (
@@ -823,10 +874,10 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                                 supplier.id &&
                                 onOpenTransactionModal(supplier.id, 'Payment', balance)
                               }
-                              title="Settle debt"
+                              title={tr('Settle debt', 'تسديد الدين')}
                               className="px-2.5 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-[11px] font-bold text-emerald-300 transition-colors cursor-pointer"
                             >
-                              Pay €{balance.toFixed(2)}
+                              {tr('Pay', 'سداد')} €{balance.toFixed(2)}
                             </button>
                           )}
 
@@ -834,7 +885,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             onClick={() =>
                               supplier.id && onOpenTransactionModal(supplier.id, 'Bill')
                             }
-                            title="Record new goods bill"
+                            title={tr('Record new goods bill', 'تسجيل فاتورة بضاعة جديدة')}
                             className="p-1.5 text-slate-400 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <ArrowDownLeft className="w-3.5 h-3.5" />
@@ -842,7 +893,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
 
                           <button
                             onClick={() => onOpenSupplierModal(supplier)}
-                            title="Edit supplier"
+                            title={tr('Edit supplier', 'تعديل المورد')}
                             className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -852,12 +903,17 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             onClick={() => {
                               if (
                                 supplier.id &&
-                                window.confirm(`Delete supplier "${supplier.name}"?`)
+                                window.confirm(
+                                  tr(
+                                    `Delete supplier "${supplier.name}"?`,
+                                    `هل أنت متأكد من حذف المورد "${supplier.name}"؟`
+                                  )
+                                )
                               ) {
                                 onDeleteSupplier(supplier.id);
                               }
                             }}
-                            title="Delete supplier"
+                            title={tr('Delete supplier', 'حذف المورد')}
                             className="p-1.5 text-slate-400 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -877,20 +933,23 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-semibold">
-                <th className="py-3.5 px-4">Date</th>
-                <th className="py-3.5 px-4">Operation Type</th>
-                <th className="py-3.5 px-4">Supplier Account</th>
-                <th className="py-3.5 px-4">Goods / Payment Description</th>
-                <th className="py-3.5 px-4">Invoice / Method</th>
-                <th className="py-3.5 px-4 text-right">Amount (€)</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3.5 px-4">{tr('Date', 'التاريخ')}</th>
+                <th className="py-3.5 px-4">{tr('Operation Type', 'نوع العملية')}</th>
+                <th className="py-3.5 px-4">{tr('Supplier Account', 'حساب المورد')}</th>
+                <th className="py-3.5 px-4">{tr('Goods / Payment Description', 'وصف البضاعة / الدفعة')}</th>
+                <th className="py-3.5 px-4">{tr('Invoice / Method', 'الفاتورة / طريقة الدفع')}</th>
+                <th className="py-3.5 px-4 text-right">{tr('Amount (€)', 'المبلغ (€)')}</th>
+                <th className="py-3.5 px-4 text-right">{tr('Actions', 'إجراءات')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
               {filteredSupplierTxs.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-10 text-center text-slate-500">
-                    No supplier bills or payments match your filter criteria.
+                    {tr(
+                      'No supplier bills or payments match your filter criteria.',
+                      'لا توجد فواتير أو دفعات موردين تطابق معايير البحث.'
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -912,24 +971,24 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                         >
                           {isBill ? (
                             <>
-                              <ArrowDownLeft className="w-3 h-3" /> Goods Bill
+                              <ArrowDownLeft className="w-3 h-3" /> {tr('Goods Bill', 'فاتورة بضاعة')}
                             </>
                           ) : (
                             <>
-                              <ArrowUpRight className="w-3 h-3" /> Payment
+                              <ArrowUpRight className="w-3 h-3" /> {tr('Payment', 'دفعة مسددة')}
                             </>
                           )}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 font-semibold text-white">
-                        {sup ? sup.name : `Supplier #${st.supplierId}`}
+                        {sup ? sup.name : `${tr('Supplier', 'مورد')} #${st.supplierId}`}
                       </td>
                       <td className="py-3.5 px-4 text-slate-200">{st.description}</td>
                       <td className="py-3.5 px-4 font-mono text-slate-400">
                         {st.referenceInvoice || '—'}
                         {st.paymentMethod && (
                           <span className="text-[10px] text-slate-500 block font-sans">
-                            {st.paymentMethod}
+                            {translatePaymentMethod(st.paymentMethod)}
                           </span>
                         )}
                       </td>
@@ -946,7 +1005,7 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             onClick={() =>
                               onOpenTransactionModal(st.supplierId, st.type, undefined, st)
                             }
-                            title="Edit supplier entry"
+                            title={tr('Edit supplier entry', 'تعديل العملية')}
                             className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -955,12 +1014,17 @@ export const SuppliersView: React.FC<SuppliersViewProps> = ({
                             onClick={() => {
                               if (
                                 st.id &&
-                                window.confirm(`Delete supplier ${st.type.toLowerCase()} "${st.description}"?`)
+                                window.confirm(
+                                  tr(
+                                    `Delete supplier ${st.type.toLowerCase()} "${st.description}"?`,
+                                    `هل أنت متأكد من حذف العملية "${st.description}"؟`
+                                  )
+                                )
                               ) {
                                 onDeleteTransaction(st.id);
                               }
                             }}
-                            title="Delete supplier entry"
+                            title={tr('Delete supplier entry', 'حذف العملية')}
                             className="p-1.5 text-slate-400 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

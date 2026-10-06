@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Customer, CustomerOrder, Transaction, OrderStatus } from '../types';
 import { getOrderPaymentInfo } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 interface CustomerLedgerModalProps {
   isOpen: boolean;
@@ -59,6 +60,7 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
   onEditTransaction,
   onDeleteTransaction,
 }) => {
+  const { tr, translateOrderStatus, translateCategory, translatePaymentMethod } = useI18n();
   const [activeTab, setActiveTab] = useState<'orders' | 'payments' | 'statement'>('orders');
 
   const {
@@ -293,7 +295,9 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
               className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export Statement CSV</span>
+              <span className="hidden sm:inline">
+                {tr('Export Statement CSV', 'تصدير كشف الحساب CSV')}
+              </span>
             </button>
             <button
               onClick={onClose}
@@ -310,26 +314,26 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             {/* Total Orders Billed */}
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Total Orders Value (إجمالي الطلبيات)
+                {tr('Total Orders Value', 'إجمالي قيمة الطلبيات')}
               </span>
               <div className="text-lg font-bold font-mono text-white mt-1">
                 €{totalOrdersBilled.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                {customerOrders.length} orders recorded
+                {customerOrders.length} {tr('orders recorded', 'طلبيات مسجلة')}
               </span>
             </div>
 
             {/* Total Payments Received */}
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Payments Received (إجمالي الدفعات المستلمة)
+                {tr('Payments Received', 'إجمالي الدفعات المستلمة')}
               </span>
               <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
                 +€{totalPaymentsReceived.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                {customerPayments.length} payment receipts
+                {customerPayments.length} {tr('payment receipts', 'سندات قبض')}
               </span>
             </div>
 
@@ -343,15 +347,15 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-200">
-                  Unpaid Balance (الرصيد المتبقي)
+                  {tr('Unpaid Balance', 'الرصيد المتبقي')}
                 </span>
                 {hasUnpaidBalance ? (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400">
-                    <AlertCircle className="w-3 h-3" /> Due
+                    <AlertCircle className="w-3 h-3" /> {tr('Due', 'مستحق')}
                   </span>
                 ) : (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-                    <CheckCircle2 className="w-3 h-3" /> Settled
+                    <CheckCircle2 className="w-3 h-3" /> {tr('Settled', 'خالص')}
                   </span>
                 )}
               </div>
@@ -364,21 +368,22 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
               </div>
               <span className="text-[10px] text-slate-400 mt-0.5 block">
                 {hasUnpaidBalance
-                  ? 'Receivable owed by customer for orders'
-                  : 'All customer orders are fully paid'}
+                  ? tr('Receivable owed by customer for orders', 'مبلغ مستحق بذمة الزبون')
+                  : tr('All customer orders are fully paid', 'جميع طلبيات الزبون مسددة بالكامل')}
               </span>
             </div>
 
             {/* Local Parcel Shipping Costs */}
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Local Shipping Costs (تكاليف الشحن)
+                {tr('Local Shipping Costs', 'تكاليف الشحن المحلي')}
               </span>
               <div className="text-lg font-bold font-mono text-sky-400 mt-1">
                 €{totalShippingSpent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500 mt-0.5 block">
-                Net Cash Profit: €{(totalPaymentsReceived - totalShippingSpent).toFixed(2)}
+                {tr('Net Cash Profit:', 'صافي الربح النقدي:')} €
+                {(totalPaymentsReceived - totalShippingSpent).toFixed(2)}
               </span>
             </div>
           </div>
@@ -396,7 +401,9 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 }`}
               >
                 <Package className="w-3.5 h-3.5" />
-                <span>Customer Orders ({customerOrders.length})</span>
+                <span>
+                  {tr('Customer Orders', 'طلبيات الزبون')} ({customerOrders.length})
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('payments')}
@@ -407,7 +414,9 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 }`}
               >
                 <Wallet className="w-3.5 h-3.5" />
-                <span>Payments Received ({customerPayments.length})</span>
+                <span>
+                  {tr('Payments Received', 'الدفعات المستلمة')} ({customerPayments.length})
+                </span>
               </button>
               <button
                 onClick={() => setActiveTab('statement')}
@@ -418,7 +427,9 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5" />
-                <span>Full Account Statement ({statementRows.length})</span>
+                <span>
+                  {tr('Full Account Statement', 'كشف الحساب الكامل')} ({statementRows.length})
+                </span>
               </button>
             </div>
 
@@ -431,8 +442,8 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 <Wallet className="w-3.5 h-3.5" />
                 <span>
                   {hasUnpaidBalance
-                    ? `+ Receive Payment (€${remainingBalanceDue.toFixed(2)} Due)`
-                    : '+ Receive Customer Payment'}
+                    ? `${tr('+ Receive Payment', '+ تلقي دفعة')} (€${remainingBalanceDue.toFixed(2)})`
+                    : tr('+ Receive Customer Payment', '+ تلقي دفعة من الزبون')}
                 </span>
               </button>
 
@@ -441,7 +452,9 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 className="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-xs font-semibold text-sky-300 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
-                <span>+ New Order (Paid or Unpaid)</span>
+                <span>
+                  {tr('+ New Order (Paid or Unpaid)', '+ طلبية جديدة (مدفوعة أو آجلة)')}
+                </span>
               </button>
 
               <button
@@ -449,7 +462,7 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                 className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Truck className="w-3.5 h-3.5 text-sky-400" />
-                <span>+ Local Shipping Cost</span>
+                <span>{tr('+ Local Shipping Cost', '+ تكلفة شحن محلي')}</span>
               </button>
             </div>
           </div>
@@ -462,21 +475,34 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             <>
               {customerOrders.length === 0 ? (
                 <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
-                  No orders recorded for this customer yet. Click &quot;+ New Order&quot; above to create a paid or unpaid order.
+                  {tr(
+                    'No orders recorded for this customer yet. Click "+ New Order" above to create a paid or unpaid order.',
+                    'لا توجد طلبيات مسجلة لهذا الزبون بعد. اضغط على "+ طلبية جديدة" أعلاه لإنشاء طلبية مدفوعة أو آجلة.'
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 font-semibold">
-                        <th className="py-3 px-3.5">Order # & Date</th>
-                        <th className="py-3 px-3.5">Items & Tracking</th>
-                        <th className="py-3 px-3.5 text-center">Order Status</th>
-                        <th className="py-3 px-3.5 text-right">Order Value</th>
-                        <th className="py-3 px-3.5 text-right">Paid</th>
-                        <th className="py-3 px-3.5 text-right">Remaining</th>
-                        <th className="py-3 px-3.5 text-center">Payment Status</th>
-                        <th className="py-3 px-3.5 text-right">Actions</th>
+                        <th className="py-3 px-3.5 text-start">
+                          {tr('Order # & Date', 'رقم الطلبية والتاريخ')}
+                        </th>
+                        <th className="py-3 px-3.5 text-start">
+                          {tr('Items & Tracking', 'الأصناف والتتبع')}
+                        </th>
+                        <th className="py-3 px-3.5 text-center">
+                          {tr('Order Status', 'وضع الطلبية')}
+                        </th>
+                        <th className="py-3 px-3.5 text-end">
+                          {tr('Order Value', 'قيمة الطلبية')}
+                        </th>
+                        <th className="py-3 px-3.5 text-end">{tr('Paid', 'المدفوع')}</th>
+                        <th className="py-3 px-3.5 text-end">{tr('Remaining', 'المتبقي')}</th>
+                        <th className="py-3 px-3.5 text-center">
+                          {tr('Payment Status', 'حالة الدفع')}
+                        </th>
+                        <th className="py-3 px-3.5 text-end">{tr('Actions', 'إجراءات')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/80">
@@ -513,49 +539,52 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                               >
                                 {ORDER_STATUSES.map((st) => (
                                   <option key={st} value={st}>
-                                    {st}
+                                    {translateOrderStatus(st)}
                                   </option>
                                 ))}
                               </select>
                             </td>
-                            <td className="py-3 px-3.5 text-right font-mono font-bold text-white whitespace-nowrap">
+                            <td className="py-3 px-3.5 text-end font-mono font-bold text-white whitespace-nowrap">
                               €{payInfo.total.toFixed(2)}
                             </td>
-                            <td className="py-3 px-3.5 text-right font-mono font-medium text-emerald-400 whitespace-nowrap">
+                            <td className="py-3 px-3.5 text-end font-mono font-medium text-emerald-400 whitespace-nowrap">
                               €{payInfo.paid.toFixed(2)}
                             </td>
-                            <td className="py-3 px-3.5 text-right font-mono font-bold text-rose-400 whitespace-nowrap">
+                            <td className="py-3 px-3.5 text-end font-mono font-bold text-rose-400 whitespace-nowrap">
                               {payInfo.remaining > 0.01 ? `€${payInfo.remaining.toFixed(2)}` : '—'}
                             </td>
                             <td className="py-3 px-3.5 text-center whitespace-nowrap">
                               {payInfo.paymentStatus === 'Paid' ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                                  <CheckCircle2 className="w-3 h-3" /> Paid
+                                  <CheckCircle2 className="w-3 h-3" /> {tr('Paid', 'مدفوعة')}
                                 </span>
                               ) : payInfo.paymentStatus === 'Partially Paid' ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                                  <Clock className="w-3 h-3" /> Partial
+                                  <Clock className="w-3 h-3" /> {tr('Partial', 'جزئي')}
                                 </span>
                               ) : (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                                  <AlertCircle className="w-3 h-3" /> Unpaid
+                                  <AlertCircle className="w-3 h-3" /> {tr('Unpaid', 'غير مدفوعة')}
                                 </span>
                               )}
                             </td>
-                            <td className="py-3 px-3.5 text-right whitespace-nowrap">
+                            <td className="py-3 px-3.5 text-end whitespace-nowrap">
                               <div className="flex items-center justify-end gap-1.5">
                                 {payInfo.remaining > 0.01 && customer.id && (
                                   <button
                                     onClick={() => onOpenReceivePayment(customer.id!, ord.id)}
                                     className="px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-[10px] font-bold text-emerald-300 cursor-pointer"
-                                    title="Receive payment for this order"
+                                    title={tr(
+                                      'Receive payment for this order',
+                                      'تلقي دفعة لهذه الطلبية'
+                                    )}
                                   >
-                                    Pay €{payInfo.remaining.toFixed(2)}
+                                    {tr('Pay', 'سداد')} €{payInfo.remaining.toFixed(2)}
                                   </button>
                                 )}
                                 <button
                                   onClick={() => onEditOrder(ord)}
-                                  title="Edit order"
+                                  title={tr('Edit order', 'تعديل الطلبية')}
                                   className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
                                 >
                                   <Edit2 className="w-3.5 h-3.5" />
@@ -564,12 +593,17 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                                   onClick={() => {
                                     if (
                                       ord.id &&
-                                      window.confirm(`Delete order ${ord.orderNumber}?`)
+                                      window.confirm(
+                                        tr(
+                                          `Delete order ${ord.orderNumber}?`,
+                                          `هل أنت متأكد من حذف الطلبية ${ord.orderNumber}؟`
+                                        )
+                                      )
                                     ) {
                                       onDeleteOrder(ord.id);
                                     }
                                   }}
-                                  title="Delete order"
+                                  title={tr('Delete order', 'حذف الطلبية')}
                                   className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 cursor-pointer"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -591,19 +625,28 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             <>
               {customerPayments.length === 0 ? (
                 <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
-                  No payments received from this customer yet. Click &quot;+ Receive Payment&quot; above when the customer pays.
+                  {tr(
+                    'No payments received from this customer yet. Click "+ Receive Payment" above when the customer pays.',
+                    'لا توجد دفعات مستلمة من هذا الزبون بعد. اضغط على "+ تلقي دفعة" أعلاه عند استلام دفعة.'
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 font-semibold">
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Payment Type</th>
-                        <th className="py-3 px-4">Description & Note</th>
-                        <th className="py-3 px-4">Reference / Method</th>
-                        <th className="py-3 px-4 text-right">Amount Received</th>
-                        <th className="py-3 px-4 text-right">Actions</th>
+                        <th className="py-3 px-4 text-start">{tr('Date', 'التاريخ')}</th>
+                        <th className="py-3 px-4 text-start">{tr('Payment Type', 'نوع الدفعة')}</th>
+                        <th className="py-3 px-4 text-start">
+                          {tr('Description & Note', 'البيان والملاحظات')}
+                        </th>
+                        <th className="py-3 px-4 text-start">
+                          {tr('Reference / Method', 'المرجع / الطريقة')}
+                        </th>
+                        <th className="py-3 px-4 text-end">
+                          {tr('Amount Received', 'المبلغ المستلم')}
+                        </th>
+                        <th className="py-3 px-4 text-end">{tr('Actions', 'إجراءات')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/80">
@@ -614,7 +657,7 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                              <Wallet className="w-3 h-3" /> {pay.category}
+                              <Wallet className="w-3 h-3" /> {translateCategory(pay.category)}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-slate-200 font-medium">
@@ -624,18 +667,18 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                             {pay.invoiceNumber || '—'}
                             {pay.paymentMethod && (
                               <span className="block text-[10px] font-sans text-slate-500">
-                                {pay.paymentMethod}
+                                {translatePaymentMethod(pay.paymentMethod)}
                               </span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono font-bold text-emerald-400 whitespace-nowrap">
+                          <td className="py-3 px-4 text-end font-mono font-bold text-emerald-400 whitespace-nowrap">
                             +€{Number(pay.amount).toFixed(2)}
                           </td>
-                          <td className="py-3 px-4 text-right whitespace-nowrap">
+                          <td className="py-3 px-4 text-end whitespace-nowrap">
                             <div className="flex items-center justify-end gap-1.5">
                               <button
                                 onClick={() => onEditTransaction(pay)}
-                                title="Edit payment"
+                                title={tr('Edit payment', 'تعديل الدفعة')}
                                 className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 cursor-pointer"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -644,12 +687,17 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                                 onClick={() => {
                                   if (
                                     pay.id &&
-                                    window.confirm(`Delete payment of €${pay.amount.toFixed(2)}?`)
+                                    window.confirm(
+                                      tr(
+                                        `Delete payment of €${pay.amount.toFixed(2)}?`,
+                                        `هل أنت متأكد من حذف الدفعة بقيمة €${pay.amount.toFixed(2)}؟`
+                                      )
+                                    )
                                   ) {
                                     onDeleteTransaction(pay.id);
                                   }
                                 }}
-                                title="Delete payment"
+                                title={tr('Delete payment', 'حذف الدفعة')}
                                 className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -670,20 +718,33 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             <>
               {statementRows.length === 0 ? (
                 <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
-                  No account activity recorded for this customer yet.
+                  {tr(
+                    'No account activity recorded for this customer yet.',
+                    'لا توجد حركات مسجلة في حساب هذا الزبون بعد.'
+                  )}
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
-                  <table className="w-full text-left text-xs border-collapse">
+                  <table className="w-full text-start text-xs border-collapse">
                     <thead>
                       <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 font-semibold">
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Operation</th>
-                        <th className="py-3 px-4">Details & Reference</th>
-                        <th className="py-3 px-4 text-right">Order Billed (+)</th>
-                        <th className="py-3 px-4 text-right">Payment Received (-)</th>
-                        <th className="py-3 px-4 text-right">Local Shipping</th>
-                        <th className="py-3 px-4 text-right">Running Debt Balance</th>
+                        <th className="py-3 px-4 text-start">{tr('Date', 'التاريخ')}</th>
+                        <th className="py-3 px-4 text-start">{tr('Operation', 'العملية')}</th>
+                        <th className="py-3 px-4 text-start">
+                          {tr('Details & Reference', 'التفاصيل والمرجع')}
+                        </th>
+                        <th className="py-3 px-4 text-end">
+                          {tr('Order Billed (+)', 'قيمة الطلبية (+)')}
+                        </th>
+                        <th className="py-3 px-4 text-end">
+                          {tr('Payment Received (-)', 'دفعة مستلمة (-)')}
+                        </th>
+                        <th className="py-3 px-4 text-end">
+                          {tr('Local Shipping', 'شحن محلي')}
+                        </th>
+                        <th className="py-3 px-4 text-end">
+                          {tr('Running Debt Balance', 'الرصيد التراكمي المتبقي')}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/80">
@@ -702,26 +763,30 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
                                   : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                               }`}
                             >
-                              {row.kind}
+                              {row.kind === 'ORDER'
+                                ? tr('ORDER', 'طلبية')
+                                : row.kind === 'PAYMENT'
+                                ? tr('PAYMENT', 'دفعة')
+                                : tr('SHIPPING', 'شحن')}
                             </span>
                           </td>
                           <td className="py-3 px-4">
                             <div className="text-slate-200 font-medium">{row.title}</div>
                             <div className="text-[10px] font-mono text-slate-500">
-                              Ref: {row.reference}
+                              {tr('Ref:', 'مرجع:')} {row.reference}
                             </div>
                           </td>
-                          <td className="py-3 px-4 text-right font-mono text-white whitespace-nowrap">
+                          <td className="py-3 px-4 text-end font-mono text-white whitespace-nowrap">
                             {row.debitOrder > 0 ? `€${row.debitOrder.toFixed(2)}` : '—'}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono text-emerald-400 font-semibold whitespace-nowrap">
+                          <td className="py-3 px-4 text-end font-mono text-emerald-400 font-semibold whitespace-nowrap">
                             {row.creditPayment > 0 ? `-€${row.creditPayment.toFixed(2)}` : '—'}
                           </td>
-                          <td className="py-3 px-4 text-right font-mono text-sky-400 whitespace-nowrap">
+                          <td className="py-3 px-4 text-end font-mono text-sky-400 whitespace-nowrap">
                             {row.shippingCost > 0 ? `€${row.shippingCost.toFixed(2)}` : '—'}
                           </td>
                           <td
-                            className={`py-3 px-4 text-right font-mono font-bold whitespace-nowrap ${
+                            className={`py-3 px-4 text-end font-mono font-bold whitespace-nowrap ${
                               row.runningBalance > 0.01 ? 'text-rose-400' : 'text-emerald-400'
                             }`}
                           >
@@ -743,7 +808,7 @@ export const CustomerLedgerModal: React.FC<CustomerLedgerModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           >
-            Close Customer Statement
+            {tr('Close Customer Statement', 'إغلاق كشف حساب الزبون')}
           </button>
         </div>
       </div>

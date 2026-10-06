@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check } from 'lucide-react';
 import type { Customer } from '../types';
+import { useI18n } from '../utils/i18n';
 
 interface CustomerModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
   editingCustomer,
   showCountryField = false,
 }) => {
+  const { tr } = useI18n();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [company, setCompany] = useState('');
@@ -93,10 +95,15 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
         <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-semibold text-white">
-              {editingCustomer ? 'Edit Customer' : 'Add New Customer'}
+              {editingCustomer
+                ? tr('Edit Customer', 'تعديل بيانات الزبون')
+                : tr('Add New Customer', 'إضافة زبون جديد')}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
-              Contact and shipping address details for packaging and dispatch
+              {tr(
+                'Contact and shipping address details for packaging and dispatch',
+                'بيانات التواصل وعنوان الشحن للتغليف والإرسال'
+              )}
             </p>
           </div>
           <button
@@ -113,27 +120,27 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                First Name <span className="text-rose-400">*</span>
+                {tr('First Name', 'الاسم الأول')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
-                placeholder="Marcus"
+                placeholder={tr('Marcus', 'أحمد')}
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
               />
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Last Name <span className="text-rose-400">*</span>
+                {tr('Last Name', 'اسم العائلة')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 required
-                placeholder="Schmidt"
+                placeholder={tr('Schmidt', 'المنصور')}
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
               />
             </div>
@@ -142,13 +149,14 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           {/* Company */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Company Name <span className="text-slate-500">(Optional)</span>
+              {tr('Company Name', 'اسم الشركة')}{' '}
+              <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
             </label>
             <input
               type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              placeholder="e.g. Schmidt Warenhandel GmbH"
+              placeholder={tr('e.g. Schmidt Warenhandel GmbH', 'مثال: شركة النور للتجارة')}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
@@ -156,7 +164,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           {/* Street & House Number */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Street & House Number <span className="text-rose-400">*</span>
+              {tr('Street & House Number', 'الشارع ورقم المبنى')} <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -172,7 +180,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Postal Code <span className="text-rose-400">*</span>
+                {tr('Postal Code', 'الرمز البريدي')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -185,7 +193,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                City <span className="text-rose-400">*</span>
+                {tr('City', 'المدينة')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -202,7 +210,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           {showCountryField && (
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Country <span className="text-rose-400">*</span>
+                {tr('Country', 'الدولة')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -219,7 +227,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Email Address <span className="text-slate-500">(Optional)</span>
+                {tr('Email Address', 'البريد الإلكتروني')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="email"
@@ -231,7 +240,8 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Phone Number <span className="text-slate-500">(Optional)</span>
+                {tr('Phone Number', 'رقم الهاتف')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="tel"
@@ -246,13 +256,17 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
           {/* Internal Notes */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Internal Warehouse Notes <span className="text-slate-500">(Optional)</span>
+              {tr('Internal Warehouse Notes', 'ملاحظات المستودع الداخلية')}{' '}
+              <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
             </label>
             <textarea
               rows={2}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g. Requires pallet tail lift, preferred carrier DHL Freight"
+              placeholder={tr(
+                'e.g. Requires pallet tail lift, preferred carrier DHL Freight',
+                'مثال: يتطلب رافعة خلفية للطبلية، شركة الشحن المفضلة DHL'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 resize-none"
             />
           </div>
@@ -264,7 +278,7 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -272,7 +286,13 @@ export const CustomerModal: React.FC<CustomerModalProps> = ({
               className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 transition-colors shadow-sm"
             >
               <Check className="w-4 h-4" />
-              <span>{isSubmitting ? 'Saving...' : editingCustomer ? 'Update Customer' : 'Save Customer'}</span>
+              <span>
+                {isSubmitting
+                  ? tr('Saving...', 'جاري الحفظ...')
+                  : editingCustomer
+                  ? tr('Update Customer', 'تحديث بيانات الزبون')
+                  : tr('Save Customer', 'حفظ الزبون')}
+              </span>
             </button>
           </div>
         </form>

@@ -10,12 +10,11 @@ import {
   X,
   Boxes,
   Truck,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle2,
   Package,
+  Globe,
 } from 'lucide-react';
 import type { FinancialHealthMetrics } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 interface SidebarProps {
   currentView: string;
@@ -42,55 +41,57 @@ export const Sidebar: React.FC<SidebarProps> = ({
   financialHealth,
   enableDynamicTheme = true,
 }) => {
+  const { tr, isAr, lang, setLanguage, translateHealthLabel, translateHealthSublabel } = useI18n();
+
   const navItems = [
     {
       id: 'dashboard',
-      label: 'Dashboard',
+      label: tr('Dashboard', 'لوحة التحكم الرئيسية'),
       icon: LayoutDashboard,
       badge: null,
     },
     {
       id: 'orders',
-      label: 'Customer Orders',
+      label: tr('Customer Orders', 'طلبيات الزبائن والشحن'),
       icon: Package,
-      badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} Due` : null,
+      badge: pendingOrdersCount > 0 ? `${pendingOrdersCount} ${tr('Due', 'بانتظار')}` : null,
       badgeColor: 'bg-amber-600 text-white',
     },
     {
       id: 'customers',
-      label: 'Customers',
+      label: tr('Customers', 'حسابات الزبائن'),
       icon: Users,
       badge: activeCustomerCount > 0 ? String(activeCustomerCount) : null,
     },
     {
       id: 'suppliers',
-      label: 'Suppliers Ledger',
+      label: tr('Suppliers Ledger', 'سجل الموردين والبضاعة'),
       icon: Truck,
-      badge: supplierDebtCount > 0 ? `${supplierDebtCount} Due` : null,
+      badge: supplierDebtCount > 0 ? `${supplierDebtCount} ${tr('Due', 'مستحق')}` : null,
       badgeColor: 'bg-rose-500 text-white',
     },
     {
       id: 'finances',
-      label: 'Operations & Ledger',
+      label: tr('Operations & Ledger', 'سجل العمليات والمحاسبة'),
       icon: Receipt,
       badge: null,
     },
     {
       id: 'reports',
-      label: 'Reports & Analytics',
+      label: tr('Reports & Analytics', 'التقارير والتحليلات'),
       icon: BarChart3,
       badge: null,
     },
     {
       id: 'printQueue',
-      label: 'Print Queue',
+      label: tr('Print Queue', 'طابور طباعة الملصقات'),
       icon: Printer,
       badge: printQueueCount > 0 ? String(printQueueCount) : null,
       badgeColor: 'bg-rose-500 text-white',
     },
     {
       id: 'settings',
-      label: 'Data & Settings',
+      label: tr('Data & Settings', 'البيانات والإعدادات'),
       icon: Settings,
       badge: null,
     },
@@ -107,8 +108,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       )}
 
       <aside
-        className={`fixed md:relative top-0 bottom-0 left-0 z-50 w-64 bg-[#0f1217] border-r border-slate-800/80 flex flex-col transition-transform duration-200 ease-in-out ${
-          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        className={`fixed md:relative top-0 bottom-0 ${
+          isAr ? 'right-0 border-l' : 'left-0 border-r'
+        } z-50 w-64 bg-[#0f1217] border-slate-800/80 flex flex-col transition-transform duration-200 ease-in-out ${
+          mobileOpen
+            ? 'translate-x-0'
+            : isAr
+            ? 'translate-x-full md:translate-x-0'
+            : '-translate-x-full md:translate-x-0'
         }`}
       >
         {/* Brand Zone */}
@@ -120,10 +127,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <div className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
                 W<span className="text-rose-500">M</span>S
-                <span className="text-xs font-medium text-slate-400">Core</span>
+                <span className="text-xs font-medium text-slate-400">
+                  {tr('Core', 'النظام')}
+                </span>
               </div>
               <div className="text-[11px] text-slate-500 tracking-wider">
-                Command Center
+                {tr('Command Center', 'مركز إدارة المستودع')}
               </div>
             </div>
           </div>
@@ -138,7 +147,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation list */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           <div className="px-3 pt-2 pb-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-            Operations
+            {tr('Operations', 'أقسام النظام')}
           </div>
           {navItems.map((item) => {
             const Icon = item.icon;
@@ -187,8 +196,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
           })}
         </nav>
 
-        {/* Bottom system footer with Live Financial Pulse */}
+        {/* Bottom system footer with Language Switcher & Live Financial Pulse */}
         <div className="p-3 border-t border-slate-800/70 space-y-2">
+          {/* Quick Language Toggle in Sidebar */}
+          <div className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+            <span className="flex items-center gap-1.5 px-2 text-slate-400 text-[11px] font-medium">
+              <Globe className="w-3.5 h-3.5 text-sky-400" />
+              <span>{tr('Language', 'اللغة')}:</span>
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setLanguage('ar')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-colors cursor-pointer ${
+                  lang === 'ar'
+                    ? 'bg-rose-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                العربية
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`px-2.5 py-1 rounded text-[11px] font-bold transition-colors cursor-pointer ${
+                  lang === 'en'
+                    ? 'bg-rose-600 text-white'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                EN
+              </button>
+            </div>
+          </div>
+
           {enableDynamicTheme && financialHealth && (
             <div
               className={`p-2.5 rounded-lg border text-xs font-mono transition-all ${financialHealth.badgeClass}`}
@@ -196,7 +235,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 font-bold font-sans text-[11px]">
                   <span className={`w-2 h-2 rounded-full ${financialHealth.dotClass}`} />
-                  {financialHealth.label}
+                  {translateHealthLabel(financialHealth.label)}
                 </span>
                 <span className="font-bold">
                   {financialHealth.comprehensiveNet >= 0 ? '+' : ''}€
@@ -207,7 +246,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </span>
               </div>
               <div className="text-[10px] text-slate-400 font-sans mt-0.5 truncate">
-                {financialHealth.sublabel}
+                {translateHealthSublabel(financialHealth.sublabel)}
               </div>
             </div>
           )}
@@ -216,12 +255,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div className="flex items-center justify-between text-slate-400">
               <span className="flex items-center gap-1.5">
                 <Database className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[11px]">IndexedDB Core</span>
+                <span className="text-[11px]">
+                  {tr('IndexedDB Core', 'قاعدة بيانات محلية')}
+                </span>
               </span>
-              <span className="text-[10px] text-emerald-400 font-mono">ONLINE</span>
+              <span className="text-[10px] text-emerald-400 font-mono">
+                {tr('ONLINE', 'متصل')}
+              </span>
             </div>
             <p className="text-[11px] text-slate-500 mt-1">
-              Offline-ready storage & instant querying
+              {tr(
+                'Offline-ready storage & instant querying',
+                'تخزين فوري يعمل بدون إنترنت'
+              )}
             </p>
           </div>
         </div>

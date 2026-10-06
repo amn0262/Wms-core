@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Check, Truck, ExternalLink, Copy, CheckCircle2 } from 'lucide-react';
+import { X, Check, Truck } from 'lucide-react';
 import type { CustomerOrder, CarrierType } from '../types';
+import { useI18n } from '../utils/i18n';
 
 interface ShipOrderModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
   order,
   onSaveShipment,
 }) => {
+  const { tr } = useI18n();
   const [carrier, setCarrier] = useState<CarrierType>('DHL');
   const [trackingNumber, setTrackingNumber] = useState('');
   const [shippedDate, setShippedDate] = useState(new Date().toISOString().slice(0, 10));
@@ -58,10 +60,14 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">
-                {order.status === 'Shipped' ? 'Update Tracking Details' : 'Dispatch & Mark as Shipped'}
+                {order.status === 'Shipped'
+                  ? tr('Update Tracking Details', 'تحديث بيانات التتبع والشحن')
+                  : tr('Dispatch & Mark as Shipped', 'إرسال الطلبية وتأكيد الشحن')}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Order <strong className="text-slate-200">{order.orderNumber}</strong> · {order.customerName}
+                {tr('Order', 'طلبية')}{' '}
+                <strong className="text-slate-200">{order.orderNumber}</strong> ·{' '}
+                {order.customerName}
               </p>
             </div>
           </div>
@@ -78,7 +84,8 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
           {/* Carrier Selector */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Carrier / Shipping Provider <span className="text-rose-400">*</span>
+              {tr('Carrier / Shipping Provider', 'شركة الشحن المحلي')}{' '}
+              <span className="text-rose-400">*</span>
             </label>
             <div className="grid grid-cols-4 gap-2">
               {CARRIERS.map((c) => (
@@ -101,7 +108,8 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
           {/* Tracking Number Input */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Carrier Tracking Number / Waybill ID <span className="text-rose-400">*</span>
+              {tr('Carrier Tracking Number / Waybill ID', 'رقم التتبع / البوليصة')}{' '}
+              <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -112,14 +120,18 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white font-mono placeholder-slate-500 focus:outline-none focus:border-rose-500 font-bold"
             />
             <p className="text-[11px] text-slate-500 mt-1">
-              Enter the package barcode or carrier tracking code to enable direct shipment tracing.
+              {tr(
+                'Enter the package barcode or carrier tracking code to enable direct shipment tracing.',
+                'أدخل باركود الطرد أو رقم التتبع لتفعيل التتبع المباشر للشحنة.'
+              )}
             </p>
           </div>
 
           {/* Shipped Date */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Dispatch / Handover Date <span className="text-rose-400">*</span>
+              {tr('Dispatch / Handover Date', 'تاريخ الشحن والتسليم')}{' '}
+              <span className="text-rose-400">*</span>
             </label>
             <input
               type="date"
@@ -137,7 +149,7 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -145,7 +157,11 @@ export const ShipOrderModal: React.FC<ShipOrderModalProps> = ({
               className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Updating...' : 'Confirm Shipment'}</span>
+              <span>
+                {isSubmitting
+                  ? tr('Updating...', 'جاري الحفظ...')
+                  : tr('Confirm Shipment', 'تأكيد الشحن')}
+              </span>
             </button>
           </div>
         </form>

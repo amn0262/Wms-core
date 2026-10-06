@@ -50,6 +50,8 @@ export interface PrintQueueItem {
   referenceNote?: string;
 }
 
+export type AppLanguage = 'en' | 'ar';
+
 export interface SenderSettings {
   senderName: string;
   senderStreet: string;
@@ -60,6 +62,7 @@ export interface SenderSettings {
   companyVat?: string;
   showCountryField?: boolean; // When false, hide the country field across customer forms and address views
   enableDynamicTheme?: boolean; // When true, shift app accent colors based on overall profit/debt health
+  language?: AppLanguage; // Application UI language ('en' | 'ar')
 }
 
 // ==========================================

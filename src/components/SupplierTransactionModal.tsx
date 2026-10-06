@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, ArrowDownLeft, ArrowUpRight, Building2 } from 'lucide-react';
 import type { Supplier, SupplierTransaction, SupplierTransactionType } from '../types';
+import { useI18n } from '../utils/i18n';
 
 interface SupplierTransactionModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
   suggestedAmount,
   editingTransaction,
 }) => {
+  const { tr } = useI18n();
   const [supplierId, setSupplierId] = useState<number>(
     prefilledSupplierId || suppliers[0]?.id || 0
   );
@@ -62,11 +64,15 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
         setAmount('');
       }
       setDate(new Date().toISOString().slice(0, 10));
-      setDescription(defaultType === 'Payment' ? 'Supplier balance settlement' : '');
+      setDescription(
+        defaultType === 'Payment'
+          ? tr('Supplier balance settlement', 'تسوية رصيد مورد')
+          : ''
+      );
       setReferenceInvoice('');
       setPaymentMethod('Bank Transfer');
     }
-  }, [isOpen, editingTransaction, prefilledSupplierId, defaultType, suggestedAmount, suppliers]);
+  }, [isOpen, editingTransaction, prefilledSupplierId, defaultType, suggestedAmount, suppliers, tr]);
 
   if (!isOpen) return null;
 
@@ -86,8 +92,8 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
         description:
           description.trim() ||
           (type === 'Bill'
-            ? 'Supplier Goods Bill / Invoice'
-            : 'Supplier Settlement Payment'),
+            ? tr('Supplier Goods Bill / Invoice', 'فاتورة بضاعة من مورد')
+            : tr('Supplier Settlement Payment', 'دفعة تسوية لمورد')),
         referenceInvoice: referenceInvoice.trim() || undefined,
         paymentMethod: type === 'Payment' ? paymentMethod : undefined,
       });
@@ -121,15 +127,23 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
             <div>
               <h2 className="text-base font-semibold text-white">
                 {editingTransaction
-                  ? `Edit Supplier ${type === 'Bill' ? 'Goods Bill' : 'Payment'}`
+                  ? type === 'Bill'
+                    ? tr('Edit Supplier Goods Bill', 'تعديل فاتورة بضاعة لمورد')
+                    : tr('Edit Supplier Payment', 'تعديل دفعة لمورد')
                   : type === 'Bill'
-                  ? 'Record Supplier Goods Bill (Invoice)'
-                  : 'Record Supplier Settlement Payment'}
+                  ? tr('Record Supplier Goods Bill (Invoice)', 'تسجيل فاتورة بضاعة من مورد')
+                  : tr('Record Supplier Settlement Payment', 'تسجيل دفعة تسوية لمورد')}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
                 {type === 'Bill'
-                  ? 'Merchandise & inventory purchase on account (increases supplier payable)'
-                  : 'Payment sent to supplier (reduces supplier debt balance)'}
+                  ? tr(
+                      'Merchandise & inventory purchase on account (increases supplier payable)',
+                      'شراء بضائع ومخزون بالآجل على الحساب (يزيد الرصيد المستحق للمورد)'
+                    )
+                  : tr(
+                      'Payment sent to supplier (reduces supplier debt balance)',
+                      'دفعة مرسلة للمورد (تخفض رصيد الدين المستحق للمورد)'
+                    )}
               </p>
             </div>
           </div>
@@ -146,7 +160,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
           {/* Transaction Type Selector */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Supplier Operation Type <span className="text-rose-400">*</span>
+              {tr('Supplier Operation Type', 'نوع عملية المورد')} <span className="text-rose-400">*</span>
             </label>
             <div className="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
               <button
@@ -159,7 +173,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
                 }`}
               >
                 <ArrowDownLeft className="w-4 h-4" />
-                <span>Goods Bill (We Owe)</span>
+                <span>{tr('Goods Bill (We Owe)', 'فاتورة بضاعة (دين علينا)')}</span>
               </button>
               <button
                 type="button"
@@ -171,7 +185,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
                 }`}
               >
                 <ArrowUpRight className="w-4 h-4" />
-                <span>Payment Sent (We Paid)</span>
+                <span>{tr('Payment Sent (We Paid)', 'دفعة مرسلة (سداد منا)')}</span>
               </button>
             </div>
           </div>
@@ -179,7 +193,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
           {/* Supplier Selector */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Select Goods Supplier <span className="text-rose-400">*</span>
+              {tr('Select Goods Supplier', 'اختر مورد البضائع')} <span className="text-rose-400">*</span>
             </label>
             <select
               value={supplierId}
@@ -199,7 +213,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Amount (€) <span className="text-rose-400">*</span>
+                {tr('Amount (€)', 'المبلغ (€)')} <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-2 text-slate-500 font-mono text-sm">€</span>
@@ -218,7 +232,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Date <span className="text-rose-400">*</span>
+                {tr('Date', 'التاريخ')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="date"
@@ -233,7 +247,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
           {/* Description */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Merchandise / Payment Details <span className="text-rose-400">*</span>
+              {tr('Merchandise / Payment Details', 'تفاصيل البضاعة / الدفعة')} <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
@@ -242,8 +256,14 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
               required
               placeholder={
                 type === 'Bill'
-                  ? 'e.g. 12x Pallets Winter Apparel & Footwear Batch #409'
-                  : 'e.g. SEPA Bank Transfer for Invoice #RE-2026-9021'
+                  ? tr(
+                      'e.g. 12x Pallets Winter Apparel & Footwear Batch #409',
+                      'مثال: 12 طبلية ملابس وأحذية شتوية دفعة #409'
+                    )
+                  : tr(
+                      'e.g. SEPA Bank Transfer for Invoice #RE-2026-9021',
+                      'مثال: تحويل بنكي SEPA لتسديد فاتورة #RE-2026-9021'
+                    )
               }
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
@@ -253,7 +273,8 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Supplier Invoice / Ref # <span className="text-slate-500">(Optional)</span>
+                {tr('Supplier Invoice / Ref #', 'رقم فاتورة المورد / المرجع')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="text"
@@ -267,28 +288,30 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
             {type === 'Payment' ? (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Payment Method
+                  {tr('Payment Method', 'طريقة الدفع')}
                 </label>
                 <select
                   value={paymentMethod}
                   onChange={(e) => setPaymentMethod(e.target.value as any)}
                   className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-rose-500"
                 >
-                  <option value="Bank Transfer">Bank Transfer (SEPA)</option>
-                  <option value="Cash">Cash Settlement</option>
-                  <option value="Credit Card">Corporate Card</option>
-                  <option value="PayPal">PayPal Commercial</option>
-                  <option value="Other">Other</option>
+                  <option value="Bank Transfer">{tr('Bank Transfer (SEPA)', 'تحويل بنكي (SEPA)')}</option>
+                  <option value="Cash">{tr('Cash Settlement', 'دفع نقدي (كاش)')}</option>
+                  <option value="Credit Card">{tr('Corporate Card', 'بطاقة ائتمان للشركة')}</option>
+                  <option value="PayPal">{tr('PayPal Commercial', 'باي بال تجاري (PayPal)')}</option>
+                  <option value="Other">{tr('Other', 'أخرى')}</option>
                 </select>
               </div>
             ) : (
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  Ledger Impact
+                  {tr('Ledger Impact', 'الأثر على الحساب')}
                 </label>
                 <div className="px-3 py-2 rounded-lg bg-rose-950/30 border border-rose-800/40 text-xs text-rose-300 font-mono flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
-                  <span>+€{parseFloat(amount || '0').toFixed(2)} Payable</span>
+                  <span>
+                    +€{parseFloat(amount || '0').toFixed(2)} {tr('Payable', 'مستحق للمورد')}
+                  </span>
                 </div>
               </div>
             )}
@@ -301,7 +324,7 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -315,12 +338,12 @@ export const SupplierTransactionModal: React.FC<SupplierTransactionModalProps> =
               <Check className="w-3.5 h-3.5" />
               <span>
                 {isSubmitting
-                  ? 'Saving...'
+                  ? tr('Saving...', 'جاري الحفظ...')
                   : editingTransaction
-                  ? 'Update Supplier Entry'
+                  ? tr('Update Supplier Entry', 'تحديث قيد المورد')
                   : type === 'Bill'
-                  ? 'Post Goods Bill'
-                  : 'Record Payment'}
+                  ? tr('Post Goods Bill', 'اعتماد فاتورة البضاعة')
+                  : tr('Record Payment', 'تسجيل الدفعة')}
               </span>
             </button>
           </div>

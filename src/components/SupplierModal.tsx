@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Check, Building2 } from 'lucide-react';
 import type { Supplier } from '../types';
+import { useI18n } from '../utils/i18n';
 
 interface SupplierModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
   onSave,
   editingSupplier,
 }) => {
+  const { tr } = useI18n();
   const [name, setName] = useState('');
   const [contactPerson, setContactPerson] = useState('');
   const [phone, setPhone] = useState('');
@@ -73,10 +75,15 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">
-                {editingSupplier ? 'Edit Goods Supplier' : 'Add New Goods Supplier'}
+                {editingSupplier
+                  ? tr('Edit Goods Supplier', 'تعديل بيانات مورد البضائع')
+                  : tr('Add New Goods Supplier', 'إضافة مورد بضائع جديد')}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Merchandise vendor details, contact info, and payment terms (no address needed)
+                {tr(
+                  'Merchandise vendor details, contact info, and payment terms (no address needed)',
+                  'تفاصيل مورد البضائع، معلومات التواصل، وشروط الدفع (لا يلزم عنوان)'
+                )}
               </p>
             </div>
           </div>
@@ -93,14 +100,18 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           {/* Supplier Name */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Goods Supplier / Vendor Name <span className="text-rose-400">*</span>
+              {tr('Goods Supplier / Vendor Name', 'اسم المورد / الشركة الموردة')}{' '}
+              <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              placeholder="e.g. Textile Wholesale GmbH, Electronics Direct, Global Trading"
+              placeholder={tr(
+                'e.g. Textile Wholesale GmbH, Electronics Direct, Global Trading',
+                'مثال: شركة النسيج للجملة، إلكترونيات دايركت، التجارة العالمية'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 font-medium"
             />
           </div>
@@ -108,13 +119,14 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           {/* Contact Person */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Contact Person / Sales Representative <span className="text-slate-500">(Optional)</span>
+              {tr('Contact Person / Sales Representative', 'اسم الشخص المسؤول / مندوب المبيعات')}{' '}
+              <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
             </label>
             <input
               type="text"
               value={contactPerson}
               onChange={(e) => setContactPerson(e.target.value)}
-              placeholder="e.g. Thomas Weber"
+              placeholder={tr('e.g. Thomas Weber', 'مثال: توماس فيبر')}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
@@ -123,7 +135,8 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Phone Number <span className="text-slate-500">(Optional)</span>
+                {tr('Phone Number', 'رقم الهاتف')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="tel"
@@ -135,7 +148,8 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Email Address <span className="text-slate-500">(Optional)</span>
+                {tr('Email Address', 'البريد الإلكتروني')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="email"
@@ -150,13 +164,17 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
           {/* Notes & Terms */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Account Notes & Terms <span className="text-slate-500">(Optional)</span>
+              {tr('Account Notes & Terms', 'ملاحظات الحساب وشروط الدفع')}{' '}
+              <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
-              placeholder="e.g. Net 14 days payment terms, IBAN: DE89 3704 0044..., standard discount agreement"
+              placeholder={tr(
+                'e.g. Net 14 days payment terms, IBAN: DE89 3704 0044..., standard discount agreement',
+                'مثال: الدفع خلال 14 يوماً، رقم الآيبان IBAN، اتفاقية الخصم المعتادة'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 resize-none"
             />
           </div>
@@ -168,7 +186,7 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -176,7 +194,13 @@ export const SupplierModal: React.FC<SupplierModalProps> = ({
               className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer shadow-xs"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'Saving...' : editingSupplier ? 'Update Supplier' : 'Save Supplier'}</span>
+              <span>
+                {isSubmitting
+                  ? tr('Saving...', 'جاري الحفظ...')
+                  : editingSupplier
+                  ? tr('Update Supplier', 'تحديث بيانات المورد')
+                  : tr('Save Supplier', 'حفظ المورد')}
+              </span>
             </button>
           </div>
         </form>

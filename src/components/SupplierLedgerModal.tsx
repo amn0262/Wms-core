@@ -15,6 +15,7 @@ import {
   Edit2,
 } from 'lucide-react';
 import type { Supplier, SupplierTransaction } from '../types';
+import { useI18n } from '../utils/i18n';
 
 interface SupplierLedgerModalProps {
   isOpen: boolean;
@@ -35,6 +36,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
   onEditTransaction,
   onDeleteTransaction,
 }) => {
+  const { tr, translatePaymentMethod } = useI18n();
   if (!isOpen || !supplier) return null;
 
   // Filter transactions for this supplier and sort chronologically for running balance
@@ -129,12 +131,15 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-white">{supplier.name}</h2>
                 <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                  Goods Supplier
+                  {tr('Goods Supplier', 'مورد بضائع')}
                 </span>
               </div>
               <div className="text-xs text-slate-400 flex items-center gap-3 mt-1">
                 {supplier.contactPerson && (
-                  <span>Contact: <strong className="text-slate-200">{supplier.contactPerson}</strong></span>
+                  <span>
+                    {tr('Contact:', 'جهة الاتصال:')}{' '}
+                    <strong className="text-slate-200">{supplier.contactPerson}</strong>
+                  </span>
                 )}
                 {supplier.phone && (
                   <span className="flex items-center gap-1 text-slate-400">
@@ -155,11 +160,11 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={handleExportCSV}
-              title="Export Statement to CSV"
+              title={tr('Export Statement to CSV', 'تصدير كشف الحساب إلى CSV')}
               className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Export CSV</span>
+              <span className="hidden sm:inline">{tr('Export CSV', 'تصدير CSV')}</span>
             </button>
             <button
               onClick={onClose}
@@ -176,26 +181,26 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
             {/* Total Invoiced */}
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Total Invoiced (Bills)
+                {tr('Total Invoiced (Bills)', 'إجمالي المفوتر (فواتير البضائع)')}
               </span>
               <div className="text-lg font-bold font-mono text-white mt-1">
                 €{totalBills.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 block">
-                Total goods & services charged
+                {tr('Total goods & services charged', 'إجمالي قيمة البضائع والخدمات المفوترة')}
               </span>
             </div>
 
             {/* Total Paid */}
             <div className="p-4 rounded-xl bg-slate-900 border border-slate-800">
               <span className="text-[11px] text-slate-400 font-medium block">
-                Total Settled (Payments)
+                {tr('Total Settled (Payments)', 'إجمالي المسدد (الدفعات)')}
               </span>
               <div className="text-lg font-bold font-mono text-emerald-400 mt-1">
                 €{totalPayments.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <span className="text-[10px] text-slate-500 mt-1 block">
-                Total payments sent to date
+                {tr('Total payments sent to date', 'إجمالي الدفعات المرسلة حتى الآن')}
               </span>
             </div>
 
@@ -211,18 +216,20 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
             >
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-slate-300">
-                  Current Account Balance
+                  {tr('Current Account Balance', 'رصيد الحساب الحالي')}
                 </span>
                 {isDebt ? (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-rose-400 uppercase tracking-wider">
-                    <AlertCircle className="w-3 h-3" /> Debt (We Owe)
+                    <AlertCircle className="w-3 h-3" /> {tr('Debt (We Owe)', 'دين (علينا)')}
                   </span>
                 ) : isCredit ? (
                   <span className="flex items-center gap-1 text-[10px] font-bold text-emerald-400 uppercase tracking-wider">
-                    <CheckCircle2 className="w-3 h-3" /> Surplus (Credit)
+                    <CheckCircle2 className="w-3 h-3" /> {tr('Surplus (Credit)', 'فائض (لنا)')}
                   </span>
                 ) : (
-                  <span className="text-[10px] font-mono text-slate-400">Settled</span>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    {tr('Settled', 'مسدد')}
+                  </span>
                 )}
               </div>
               <div
@@ -234,10 +241,10 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
               </div>
               <span className="text-[10px] text-slate-400 mt-1 block">
                 {isDebt
-                  ? 'Outstanding payable due to this supplier'
+                  ? tr('Outstanding payable due to this supplier', 'مبلغ مستحق الدفع لهذا المورد')
                   : isCredit
-                  ? 'Overpayment or advance credit with supplier'
-                  : 'All invoices are fully settled'}
+                  ? tr('Overpayment or advance credit with supplier', 'رصيد مقدم أو دفعة زائدة لدى المورد')
+                  : tr('All invoices are fully settled', 'جميع الفواتير مسددة بالكامل')}
               </span>
             </div>
           </div>
@@ -245,7 +252,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
           {/* Quick Transaction Action Buttons */}
           <div className="flex items-center justify-between pt-4 mt-4 border-t border-slate-800/60">
             <span className="text-xs text-slate-400 font-medium">
-              Record new ledger entry:
+              {tr('Record new ledger entry:', 'تسجيل قيد جديد في كشف الحساب:')}
             </span>
             <div className="flex items-center gap-2">
               <button
@@ -253,7 +260,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-300 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 transition-colors cursor-pointer"
               >
                 <ArrowDownLeft className="w-3.5 h-3.5" />
-                <span>+ Post New Bill</span>
+                <span>{tr('+ Post New Bill', '+ تسجيل فاتورة جديدة')}</span>
               </button>
 
               <button
@@ -268,7 +275,11 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-300 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 transition-colors cursor-pointer"
               >
                 <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>{isDebt ? `Settle Debt (€${currentBalance.toFixed(2)})` : '+ Send Payment'}</span>
+                <span>
+                  {isDebt
+                    ? `${tr('Settle Debt', 'تسديد الدين')} (€${currentBalance.toFixed(2)})`
+                    : tr('+ Send Payment', '+ إرسال دفعة')}
+                </span>
               </button>
             </div>
           </div>
@@ -278,29 +289,33 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
         <div className="p-6 overflow-y-auto flex-1">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-              Statement of Account ({sortedEntries.length} entries)
+              {tr('Statement of Account', 'كشف الحساب التفصيلي')} ({sortedEntries.length}{' '}
+              {tr('entries', 'عملية')})
             </h3>
             <span className="text-[11px] text-slate-500 font-mono">
-              Newest records on top
+              {tr('Newest records on top', 'الأحدث في الأعلى')}
             </span>
           </div>
 
           {sortedEntries.length === 0 ? (
             <div className="p-8 text-center rounded-xl bg-slate-900/40 border border-slate-800 text-xs text-slate-400">
-              No bills or payments recorded for this supplier yet. Click "+ Post New Bill" or "+ Send Payment" above.
+              {tr(
+                'No bills or payments recorded for this supplier yet. Click "+ Post New Bill" or "+ Send Payment" above.',
+                'لا توجد فواتير أو دفعات مسجلة لهذا المورد بعد. اضغط على "+ تسجيل فاتورة جديدة" أو "+ إرسال دفعة" بالأعلى.'
+              )}
             </div>
           ) : (
             <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-800 bg-slate-900 text-slate-400 font-semibold">
-                    <th className="py-3 px-4">Date</th>
-                    <th className="py-3 px-4">Type</th>
-                    <th className="py-3 px-4">Description & Reference</th>
-                    <th className="py-3 px-4 text-right">Bill (Debt +)</th>
-                    <th className="py-3 px-4 text-right">Payment (Paid -)</th>
-                    <th className="py-3 px-4 text-right">Running Balance</th>
-                    <th className="py-3 px-4 text-center">Action</th>
+                    <th className="py-3 px-4">{tr('Date', 'التاريخ')}</th>
+                    <th className="py-3 px-4">{tr('Type', 'النوع')}</th>
+                    <th className="py-3 px-4">{tr('Description & Reference', 'الوصف والمرجع')}</th>
+                    <th className="py-3 px-4 text-right">{tr('Bill (Debt +)', 'فاتورة (دين +)')}</th>
+                    <th className="py-3 px-4 text-right">{tr('Payment (Paid -)', 'دفعة (سداد -)')}</th>
+                    <th className="py-3 px-4 text-right">{tr('Running Balance', 'الرصيد التراكمي')}</th>
+                    <th className="py-3 px-4 text-center">{tr('Action', 'إجراء')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
@@ -321,11 +336,11 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                           >
                             {isBill ? (
                               <>
-                                <ArrowDownLeft className="w-3 h-3" /> Bill
+                                <ArrowDownLeft className="w-3 h-3" /> {tr('Bill', 'فاتورة')}
                               </>
                             ) : (
                               <>
-                                <ArrowUpRight className="w-3 h-3" /> Payment
+                                <ArrowUpRight className="w-3 h-3" /> {tr('Payment', 'دفعة')}
                               </>
                             )}
                           </span>
@@ -335,11 +350,13 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                           <div className="text-[11px] text-slate-400 flex items-center gap-2 mt-0.5">
                             {item.referenceInvoice && (
                               <span className="font-mono text-slate-300">
-                                Ref: {item.referenceInvoice}
+                                {tr('Ref:', 'مرجع:')} {item.referenceInvoice}
                               </span>
                             )}
                             {item.paymentMethod && (
-                              <span className="text-slate-500">· {item.paymentMethod}</span>
+                              <span className="text-slate-500">
+                                · {translatePaymentMethod(item.paymentMethod)}
+                              </span>
                             )}
                           </div>
                         </td>
@@ -367,7 +384,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                             {onEditTransaction && (
                               <button
                                 onClick={() => onEditTransaction(item)}
-                                title="Edit entry"
+                                title={tr('Edit entry', 'تعديل القيد')}
                                 className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800 transition-colors cursor-pointer"
                               >
                                 <Edit2 className="w-3.5 h-3.5" />
@@ -375,11 +392,16 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
                             )}
                             <button
                               onClick={() => {
-                                if (item.id && window.confirm('Delete this ledger entry?')) {
+                                if (
+                                  item.id &&
+                                  window.confirm(
+                                    tr('Delete this ledger entry?', 'هل أنت متأكد من حذف هذا القيد؟')
+                                  )
+                                ) {
                                   onDeleteTransaction(item.id);
                                 }
                               }}
-                              title="Delete entry"
+                              title={tr('Delete entry', 'حذف القيد')}
                               className="p-1 text-slate-500 hover:text-rose-400 rounded hover:bg-slate-800 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -401,7 +423,7 @@ export const SupplierLedgerModal: React.FC<SupplierLedgerModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
           >
-            Close Statement
+            {tr('Close Statement', 'إغلاق كشف الحساب')}
           </button>
         </div>
       </div>

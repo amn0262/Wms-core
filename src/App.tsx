@@ -29,12 +29,23 @@ import { ReportsView } from './components/ReportsView';
 import { PrintQueueView } from './components/PrintQueueView';
 import { SettingsView } from './components/SettingsView';
 import { TransactionModal } from './components/TransactionModal';
+import type { UnifiedTransactionExtraActions } from './components/TransactionModal';
 import { CustomerModal } from './components/CustomerModal';
 import { SupplierModal } from './components/SupplierModal';
 import { SupplierTransactionModal } from './components/SupplierTransactionModal';
 import { OrderModal } from './components/OrderModal';
 import { CustomerPaymentModal } from './components/CustomerPaymentModal';
 import { computeFinancialHealth, getOrderPaymentInfo } from './utils/financialTheme';
+import {
+  I18nContext,
+  CATEGORY_AR_MAP,
+  ORDER_STATUS_AR_MAP,
+  PAYMENT_STATUS_AR_MAP,
+  PAYMENT_METHOD_AR_MAP,
+  HEALTH_LABEL_AR_MAP,
+  HEALTH_SUBLABEL_AR_MAP,
+} from './utils/i18n';
+import type { AppLanguage } from './types';
 
 export default function App() {
   const [currentView, setCurrentView] = useState<string>('dashboard');
@@ -135,10 +146,37 @@ export default function App() {
     ).length;
   }, [orders]);
 
-  // Transaction Actions (Create & Edit)
+  // Transaction Actions (Create & Edit + Interconnected Customer/Order/Supplier updates)
   const handleSaveTransaction = async (
-    data: Omit<Transaction, 'id' | 'timestamp'> & { id?: number }
+    data: Omit<Transaction, 'id' | 'timestamp'> & { id?: number },
+    extraActions?: UnifiedTransactionExtraActions
   ) => {
+    // 1. If it's a Customer Payment settlement via the Unified Modal, use handleReceiveCustomerPayment so order balances & finances update together
+    if (!data.id && extraActions?.customerPaymentSettlement) {
+      await handleReceiveCustomerPayment(extraActions.customerPaymentSettlement);
+      return;
+    }
+
+    // 2. If it's a Supplier Ledger Entry (Bill on credit or Supplier Payment)
+    if (!data.id && extraActions?.supplierLedgerEntry) {
+      const supEntry = extraActions.supplierLedgerEntry;
+      await handleSaveSupplierTransaction({
+        supplierId: supEntry.supplierId,
+        type: supEntry.type,
+        amount: supEntry.amount,
+        date: supEntry.date,
+        description: supEntry.description,
+        referenceInvoice: supEntry.referenceInvoice,
+        paymentMethod: supEntry.paymentMethod,
+      });
+
+      // If it's a Bill on credit (Unpaid), we don't deduct cash from finances yet
+      if (!supEntry.recordInCashFinances) {
+        return;
+      }
+    }
+
+    // 3. Save in finances table
     if (data.id) {
       const existing = transactions.find((t) => t.id === data.id);
       const updated: Transaction = {
@@ -155,6 +193,17 @@ export default function App() {
       };
       const id = await db.finances.add(newTx);
       setTransactions((prev) => [{ ...newTx, id }, ...prev]);
+    }
+
+    // 4. If Shipping expense is linked to an Order and marked to update shipment status
+    if (!data.id && extraActions?.shipmentOrderUpdate) {
+      const shipUpd = extraActions.shipmentOrderUpdate;
+      await handleSaveShipment(
+        shipUpd.orderId,
+        shipUpd.carrier,
+        shipUpd.trackingNumber,
+        shipUpd.shippedDate
+      );
     }
   };
 
@@ -527,6 +576,44 @@ export default function App() {
     setSenderSettings(settings);
   };
 
+  // Language state & helpers
+  const lang: AppLanguage = senderSettings.language || 'en';
+  const isAr = lang === 'ar';
+  const dir: 'ltr' | 'rtl' = isAr ? 'rtl' : 'ltr';
+
+  const handleSetLanguage = useCallback(
+    async (newLang: AppLanguage) => {
+      const updated: SenderSettings = { ...senderSettings, language: newLang };
+      setSenderSettings(updated);
+      await saveSenderSettings(updated);
+    },
+    [senderSettings]
+  );
+
+  const handleToggleLanguage = useCallback(() => {
+    handleSetLanguage(lang === 'ar' ? 'en' : 'ar');
+  }, [lang, handleSetLanguage]);
+
+  const i18nValue = useMemo(
+    () => ({
+      lang,
+      isAr,
+      dir,
+      setLanguage: handleSetLanguage,
+      toggleLanguage: handleToggleLanguage,
+      tr: (en: string, ar: string) => (isAr ? ar : en),
+      translateCategory: (cat: string) => (isAr ? CATEGORY_AR_MAP[cat] || cat : cat),
+      translateOrderStatus: (st: string) => (isAr ? ORDER_STATUS_AR_MAP[st] || st : st),
+      translatePaymentStatus: (ps: string) => (isAr ? PAYMENT_STATUS_AR_MAP[ps] || ps : ps),
+      translatePaymentMethod: (pm?: string) =>
+        !pm ? '' : isAr ? PAYMENT_METHOD_AR_MAP[pm] || pm : pm,
+      translateHealthLabel: (lbl: string) => (isAr ? HEALTH_LABEL_AR_MAP[lbl] || lbl : lbl),
+      translateHealthSublabel: (sub: string) =>
+        isAr ? HEALTH_SUBLABEL_AR_MAP[sub] || sub : sub,
+    }),
+    [lang, isAr, dir, handleSetLanguage, handleToggleLanguage]
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0b0d11] text-white flex items-center justify-center">
@@ -543,7 +630,11 @@ export default function App() {
   const isDynamicThemeActive = senderSettings.enableDynamicTheme !== false;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#0b0d11] text-slate-100 font-sans">
+    <I18nContext.Provider value={i18nValue}>
+      <div
+        dir={dir}
+        className="flex flex-col h-screen overflow-hidden bg-[#0b0d11] text-slate-100 font-sans"
+      >
       {/* Dynamic Ambient Financial Health Aura Line */}
       {isDynamicThemeActive && (
         <div
@@ -787,6 +878,8 @@ export default function App() {
         }}
         onSave={handleSaveTransaction}
         customers={customers}
+        orders={orders}
+        suppliers={suppliers}
         prefilledCustomerId={transactionPrefillCustomerId}
         editingTransaction={editingTransaction}
         defaultCategory={defaultTransactionCategory}
@@ -856,6 +949,7 @@ export default function App() {
         suggestedAmount={supplierTxSuggestedAmount}
         editingTransaction={editingSupplierTransaction}
       />
-    </div>
+      </div>
+    </I18nContext.Provider>
   );
 }

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Check, Wallet, ArrowDownLeft, CheckCircle2, Package } from 'lucide-react';
+import { X, Check, Wallet, CheckCircle2 } from 'lucide-react';
 import type { Customer, CustomerOrder } from '../types';
 import { getOrderPaymentInfo } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 interface CustomerPaymentModalProps {
   isOpen: boolean;
@@ -30,6 +31,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
   prefilledOrderId,
   onReceivePayment,
 }) => {
+  const { tr } = useI18n();
   const [customerId, setCustomerId] = useState<number>(0);
   const [selectedOrderId, setSelectedOrderId] = useState<string>('ALL_BALANCE');
   const [amount, setAmount] = useState<string>('');
@@ -193,10 +195,13 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">
-                Receive Customer Payment (تلقي دفعة من الزبون)
+                {tr('Receive Customer Payment', 'تلقي دفعة من الزبون')}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Settle unpaid orders or balance customer account receivables
+                {tr(
+                  'Settle unpaid orders or balance customer account receivables',
+                  'تسديد الطلبيات الآجلة أو موازنة رصيد ذمم الزبون'
+                )}
               </p>
             </div>
           </div>
@@ -213,7 +218,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           {/* Customer Selection */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Customer Account <span className="text-rose-400">*</span>
+              {tr('Customer Account', 'حساب الزبون')} <span className="text-rose-400">*</span>
             </label>
             <select
               value={customerId}
@@ -233,17 +238,17 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-400 font-medium">
-                Customer Orders & Receivables Summary:
+                {tr('Customer Orders & Receivables Summary:', 'ملخص طلبيات وذمم الزبون:')}
               </span>
               <span className="font-mono text-[11px] text-slate-400">
-                {customerOrderSummary.allOrdersCount} Total Orders
+                {customerOrderSummary.allOrdersCount} {tr('Total Orders', 'إجمالي الطلبات')}
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 text-xs font-mono">
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
                 <span className="text-[10px] font-sans text-slate-500 block">
-                  Total Orders Billed
+                  {tr('Total Orders Billed', 'إجمالي الطلبيات')}
                 </span>
                 <span className="text-white font-bold">
                   €{customerOrderSummary.totalBilled.toFixed(2)}
@@ -251,7 +256,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
               </div>
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
                 <span className="text-[10px] font-sans text-slate-500 block">
-                  Paid Previously
+                  {tr('Paid Previously', 'المدفوع سابقاً')}
                 </span>
                 <span className="text-emerald-400 font-bold">
                   €{customerOrderSummary.totalPaid.toFixed(2)}
@@ -259,7 +264,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
               </div>
               <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
                 <span className="text-[10px] font-sans text-slate-500 block">
-                  Unpaid Balance Due
+                  {tr('Unpaid Balance Due', 'الرصيد المتبقي')}
                 </span>
                 <span
                   className={`font-bold ${
@@ -277,7 +282,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           {/* Target Order or General Balance Selector */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Apply Payment To (تخصيص الدفعة)
+              {tr('Apply Payment To', 'تخصيص الدفعة إلى')}
             </label>
             <select
               value={selectedOrderId}
@@ -285,12 +290,16 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-500"
             >
               <option value="ALL_BALANCE">
-                General Account Balance Settlement (موازنة الرصيد العام — يسدد الطلبيات الأقدم تلقائياً)
+                {tr(
+                  'General Account Balance Settlement (Auto-settles oldest unpaid orders)',
+                  'موازنة الرصيد العام — يسدد الطلبيات الأقدم تلقائياً'
+                )}
               </option>
               {customerOrderSummary.unpaidOrders.map((ord) => (
                 <option key={ord.id} value={String(ord.id)}>
-                  Order {ord.orderNumber} ({ord.orderDate}) — Remaining Due: €
-                  {ord.remaining.toFixed(2)} (of €{ord.amount.toFixed(2)})
+                  {tr('Order', 'طلبية')} {ord.orderNumber} ({ord.orderDate}) —{' '}
+                  {tr('Remaining Due:', 'المتبقي:')} €{ord.remaining.toFixed(2)} (
+                  {tr('of', 'من')} €{ord.amount.toFixed(2)})
                 </option>
               ))}
             </select>
@@ -301,7 +310,8 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1.5">
                 <label className="block text-xs font-medium text-slate-300">
-                  Payment Received (€) <span className="text-rose-400">*</span>
+                  {tr('Payment Received (€)', 'المبلغ المستلم (€)')}{' '}
+                  <span className="text-rose-400">*</span>
                 </label>
                 {customerOrderSummary.totalRemaining > 0 && (
                   <button
@@ -311,7 +321,8 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
                     }
                     className="text-[10px] font-mono text-emerald-400 hover:text-emerald-300 cursor-pointer"
                   >
-                    Full Balance (€{customerOrderSummary.totalRemaining.toFixed(2)})
+                    {tr('Full Balance', 'كامل الرصيد')} (€
+                    {customerOrderSummary.totalRemaining.toFixed(2)})
                   </button>
                 )}
               </div>
@@ -334,7 +345,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Payment Date <span className="text-rose-400">*</span>
+                {tr('Payment Date', 'تاريخ الدفعة')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="date"
@@ -350,24 +361,29 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Payment Method
+                {tr('Payment Method', 'طريقة الدفع')}
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as any)}
                 className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
               >
-                <option value="Bank Transfer">Bank Transfer (SEPA)</option>
-                <option value="Cash">Cash Payment</option>
+                <option value="Bank Transfer">
+                  {tr('Bank Transfer (SEPA)', 'تحويل بنكي (SEPA)')}
+                </option>
+                <option value="Cash">{tr('Cash Payment', 'دفع نقدي (Cash)')}</option>
                 <option value="PayPal">PayPal</option>
-                <option value="Credit Card">Card / Terminal</option>
-                <option value="Other">Other</option>
+                <option value="Credit Card">
+                  {tr('Card / Terminal', 'بطاقة ائتمان')}
+                </option>
+                <option value="Other">{tr('Other', 'طريقة أخرى')}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Reference / Order # <span className="text-slate-500">(Optional)</span>
+                {tr('Reference / Order #', 'رقم المرجع / الطلبية')}{' '}
+                <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
               </label>
               <input
                 type="text"
@@ -382,13 +398,16 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
           {/* Description */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Payment Note / Description
+              {tr('Payment Note / Description', 'ملاحظة / بيان الدفعة')}
             </label>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="e.g. Settlement payment received from customer"
+              placeholder={tr(
+                'e.g. Settlement payment received from customer',
+                'مثال: دفعة تسديد رصيد مستلمة من الزبون'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none"
             />
           </div>
@@ -398,7 +417,10 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
             <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-800/50 flex items-center justify-between text-xs">
               <span className="text-emerald-300 flex items-center gap-1.5 font-medium">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                Remaining Customer Debt After This Payment:
+                {tr(
+                  'Remaining Customer Debt After This Payment:',
+                  'الرصيد المتبقي بذمة الزبون بعد هذه الدفعة:'
+                )}
               </span>
               <span className="font-mono font-bold text-white text-sm">
                 €{newRemainingAfterPayment.toFixed(2)}
@@ -413,7 +435,7 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -422,7 +444,9 @@ export const CustomerPaymentModal: React.FC<CustomerPaymentModalProps> = ({
             >
               <Check className="w-3.5 h-3.5" />
               <span>
-                {isSubmitting ? 'Recording...' : `Confirm Payment (+€${numEntering.toFixed(2)})`}
+                {isSubmitting
+                  ? tr('Recording...', 'جاري التسجيل...')
+                  : `${tr('Confirm Payment', 'تأكيد استلام الدفعة')} (+€${numEntering.toFixed(2)})`}
               </span>
             </button>
           </div>

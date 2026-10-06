@@ -8,6 +8,7 @@ import type {
   CarrierType,
 } from '../types';
 import { getOrderPaymentInfo } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 interface OrderModalProps {
   isOpen: boolean;
@@ -38,6 +39,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   editingOrder,
   prefilledCustomerId,
 }) => {
+  const { tr, translateOrderStatus } = useI18n();
   const [customerId, setCustomerId] = useState<number>(0);
   const [orderNumber, setOrderNumber] = useState('');
   const [itemsDescription, setItemsDescription] = useState('');
@@ -178,10 +180,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-semibold text-white">
-                {editingOrder ? 'Edit Customer Order & Payment Status' : 'Create Customer Order'}
+                {editingOrder
+                  ? tr('Edit Customer Order & Payment Status', 'تعديل طلبية الزبون وحالة الدفع')
+                  : tr('Create Customer Order', 'إنشاء طلبية زبون جديدة')}
               </h2>
               <p className="text-xs text-slate-400 mt-0.5">
-                Execute order with immediate payment, partial deposit, or deferred payment (on account)
+                {tr(
+                  'Execute order with immediate payment, partial deposit, or deferred payment (on account)',
+                  'تنفيذ الطلبية بدفع فوري، دفعة جزئية، أو بدون دفع فوري (على الحساب)'
+                )}
               </p>
             </div>
           </div>
@@ -198,7 +205,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* Customer Selection */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Customer Account <span className="text-rose-400">*</span>
+              {tr('Customer Account', 'حساب الزبون')} <span className="text-rose-400">*</span>
             </label>
             <select
               value={customerId}
@@ -218,7 +225,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Order Number <span className="text-rose-400">*</span>
+                {tr('Order Number', 'رقم الطلبية')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="text"
@@ -232,7 +239,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Order Date <span className="text-rose-400">*</span>
+                {tr('Order Date', 'تاريخ الطلبية')} <span className="text-rose-400">*</span>
               </label>
               <input
                 type="date"
@@ -248,7 +255,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Total Order Value (€) <span className="text-rose-400">*</span>
+                {tr('Total Order Value (€)', 'إجمالي قيمة الطلبية (€)')}{' '}
+                <span className="text-rose-400">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3.5 top-2 text-slate-500 font-mono text-sm">€</span>
@@ -267,7 +275,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Dispatch / Order Status <span className="text-rose-400">*</span>
+                {tr('Dispatch / Order Status', 'وضع الطلبية / الشحن')}{' '}
+                <span className="text-rose-400">*</span>
               </label>
               <select
                 value={status}
@@ -276,21 +285,19 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               >
                 {STATUSES.map((st) => (
                   <option key={st} value={st}>
-                    {st}
+                    {translateOrderStatus(st)}
                   </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* ============================================================== */}
           {/* PAYMENT TERMS: UNPAID (ON CREDIT) / PARTIAL / PAID IMMEDIATELY */}
-          {/* ============================================================== */}
           <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-white flex items-center gap-1.5">
                 <Wallet className="w-4 h-4 text-emerald-400" />
-                Payment Terms (طريقة الدفع عند تنفيذ الطلبية)
+                {tr('Payment Terms', 'طريقة الدفع عند تنفيذ الطلبية')}
               </span>
               <span
                 className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${
@@ -302,10 +309,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 }`}
               >
                 {paymentMode === 'Paid'
-                  ? 'PAID IN FULL'
+                  ? tr('PAID IN FULL', 'مدفوعة بالكامل')
                   : paymentMode === 'Partially Paid'
-                  ? 'PARTIAL DEPOSIT'
-                  : 'NO IMMEDIATE PAYMENT (ON ACCOUNT)'}
+                  ? tr('PARTIAL DEPOSIT', 'دفعة جزئية')
+                  : tr('NO IMMEDIATE PAYMENT (ON ACCOUNT)', 'بدون دفع فوري (على الحساب)')}
               </span>
             </div>
 
@@ -316,7 +323,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   setPaymentMode('Unpaid');
                   setPaidAmountInput('0');
                 }}
-                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                className={`p-2.5 rounded-lg border text-start transition-all cursor-pointer ${
                   paymentMode === 'Unpaid'
                     ? 'bg-rose-600/20 border-rose-500 text-rose-200 shadow-xs'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -324,10 +331,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               >
                 <div className="font-bold flex items-center gap-1">
                   <AlertCircle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
-                  <span>Unpaid (On Account)</span>
+                  <span>{tr('Unpaid (On Account)', 'بدون دفع فوري (آجل)')}</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  بدون دفع فوري (يُسجل دين على الزبون ويُسدد لاحقاً)
+                  {tr(
+                    'Execute order now, collect payment later',
+                    'يُسجل دين على الزبون ويُسدد لاحقاً'
+                  )}
                 </div>
               </button>
 
@@ -339,7 +349,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     setPaidAmountInput(numOrderTotal > 0 ? (numOrderTotal / 2).toFixed(2) : '');
                   }
                 }}
-                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                className={`p-2.5 rounded-lg border text-start transition-all cursor-pointer ${
                   paymentMode === 'Partially Paid'
                     ? 'bg-amber-600/20 border-amber-500 text-amber-200 shadow-xs'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -347,10 +357,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               >
                 <div className="font-bold flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>Partial Payment</span>
+                  <span>{tr('Partial Payment', 'دفعة جزئية')}</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  دفعة جزئية الآن والباقي ذمم على الزبون
+                  {tr(
+                    'Pay deposit now, balance on customer account',
+                    'دفعة جزئية الآن والباقي ذمم على الزبون'
+                  )}
                 </div>
               </button>
 
@@ -360,7 +373,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   setPaymentMode('Paid');
                   setPaidAmountInput(String(numOrderTotal));
                 }}
-                className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
+                className={`p-2.5 rounded-lg border text-start transition-all cursor-pointer ${
                   paymentMode === 'Paid'
                     ? 'bg-emerald-600/20 border-emerald-500 text-emerald-200 shadow-xs'
                     : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
@@ -368,10 +381,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               >
                 <div className="font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>Paid Immediately</span>
+                  <span>{tr('Paid Immediately', 'دفع فوري بالكامل')}</span>
                 </div>
                 <div className="text-[10px] text-slate-400 mt-0.5">
-                  مدفوع بالكامل فوراً عند إنشاء الطلبية
+                  {tr(
+                    'Settled in full upon order execution',
+                    'مدفوع بالكامل فوراً عند إنشاء الطلبية'
+                  )}
                 </div>
               </button>
             </div>
@@ -379,7 +395,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             {paymentMode === 'Partially Paid' && (
               <div className="pt-2">
                 <label className="block text-xs font-medium text-amber-300 mb-1">
-                  Initial Amount Paid Now (€) <span className="text-rose-400">*</span>
+                  {tr('Initial Amount Paid Now (€)', 'المبلغ المدفوع مقدماً الآن (€)')}{' '}
+                  <span className="text-rose-400">*</span>
                 </label>
                 <div className="relative">
                   <span className="absolute left-3.5 top-2 text-slate-500 font-mono text-sm">
@@ -402,18 +419,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             {/* Live Order Balance Summary Pill */}
             <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800/80 text-[11px] font-mono">
               <div className="p-2 rounded bg-slate-950 border border-slate-800">
-                <span className="text-slate-500 block font-sans text-[10px]">Order Value</span>
+                <span className="text-slate-500 block font-sans text-[10px]">
+                  {tr('Order Value', 'قيمة الطلبية')}
+                </span>
                 <span className="text-white font-bold">€{numOrderTotal.toFixed(2)}</span>
               </div>
               <div className="p-2 rounded bg-slate-950 border border-slate-800">
-                <span className="text-slate-500 block font-sans text-[10px]">Paid Now</span>
+                <span className="text-slate-500 block font-sans text-[10px]">
+                  {tr('Paid Now', 'المدفوع الآن')}
+                </span>
                 <span className="text-emerald-400 font-bold">
                   +€{computedPaidAmount.toFixed(2)}
                 </span>
               </div>
               <div className="p-2 rounded bg-slate-950 border border-slate-800">
                 <span className="text-slate-500 block font-sans text-[10px]">
-                  Remaining on Customer
+                  {tr('Remaining on Customer', 'المتبقي بذمة الزبون')}
                 </span>
                 <span
                   className={`font-bold ${
@@ -429,14 +450,18 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* Items Description */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Items / Goods Description <span className="text-rose-400">*</span>
+              {tr('Items / Goods Description', 'وصف البضاعة / الأصناف')}{' '}
+              <span className="text-rose-400">*</span>
             </label>
             <input
               type="text"
               value={itemsDescription}
               onChange={(e) => setItemsDescription(e.target.value)}
               required
-              placeholder="e.g. 5x Master Cartons Electronics, 20x Palletized Units"
+              placeholder={tr(
+                'e.g. 5x Master Cartons Electronics, 20x Palletized Units',
+                'مثال: 5 كراتين بضاعة متنوعة، 20 وحدة جاهزة للشحن'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
@@ -446,18 +471,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                 <Truck className="w-3.5 h-3.5 text-sky-400" />
-                Standard Local Parcel Carrier & Tracking
+                {tr('Standard Local Parcel Carrier & Tracking', 'شركة الشحن المحلي ورقم التتبع')}
               </span>
               <span className="text-[10px] text-slate-500">
                 {status === 'Shipped' || status === 'Delivered'
-                  ? 'Required for shipped orders'
-                  : 'Optional at processing'}
+                  ? tr('Required for shipped orders', 'مطلوب للطلبيات المشحونة')
+                  : tr('Optional at processing', 'اختياري أثناء التجهيز')}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] text-slate-400 mb-1">Local Carrier</label>
+                <label className="block text-[11px] text-slate-400 mb-1">
+                  {tr('Local Carrier', 'شركة الشحن')}
+                </label>
                 <select
                   value={carrier}
                   onChange={(e) => setCarrier(e.target.value as CarrierType)}
@@ -473,7 +500,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
               <div>
                 <label className="block text-[11px] text-slate-400 mb-1">
-                  Tracking Number / Barcode
+                  {tr('Tracking Number / Barcode', 'رقم التتبع / الباركود')}
                 </label>
                 <input
                   type="text"
@@ -489,13 +516,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           {/* Notes */}
           <div>
             <label className="block text-xs font-medium text-slate-300 mb-1.5">
-              Order Notes / Delivery Instructions <span className="text-slate-500">(Optional)</span>
+              {tr('Order Notes / Delivery Instructions', 'ملاحظات الطلبية / تعليمات التسليم')}{' '}
+              <span className="text-slate-500">{tr('(Optional)', '(اختياري)')}</span>
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              placeholder="e.g. Deferred payment agreed for 14 days, deliver to Gate 3"
+              placeholder={tr(
+                'e.g. Deferred payment agreed for 14 days, deliver to Gate 3',
+                'مثال: تم الاتفاق على السداد خلال 14 يوماً، التسليم للبوابة 3'
+              )}
               className="w-full bg-slate-900 border border-slate-700/80 rounded-lg px-3.5 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500 resize-none"
             />
           </div>
@@ -507,7 +538,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
             >
-              Cancel
+              {tr('Cancel', 'إلغاء')}
             </button>
             <button
               type="submit"
@@ -517,12 +548,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               <Check className="w-3.5 h-3.5" />
               <span>
                 {isSubmitting
-                  ? 'Saving...'
+                  ? tr('Saving...', 'جاري الحفظ...')
                   : editingOrder
-                  ? 'Update Order'
+                  ? tr('Update Order', 'حفظ التعديلات')
                   : paymentMode === 'Unpaid'
-                  ? 'Create Unpaid Order (On Account)'
-                  : 'Create Order'}
+                  ? tr('Create Unpaid Order (On Account)', 'إنشاء طلبية آجلة (على الحساب)')
+                  : tr('Create Order', 'إنشاء الطلبية')}
               </span>
             </button>
           </div>

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import type { Customer, Transaction, SenderSettings } from '../types';
 import { db } from '../db';
+import { useI18n } from '../utils/i18n';
 
 interface SettingsViewProps {
   senderSettings: SenderSettings;
@@ -35,6 +36,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   transactions,
   onReloadData,
 }) => {
+  const { tr, lang, setLanguage } = useI18n();
   const [formSettings, setFormSettings] = useState<SenderSettings>(senderSettings);
   const [isSavedAlert, setIsSavedAlert] = useState(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
@@ -94,7 +96,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setSaveSuccessMsg('File successfully saved to your Downloads folder!');
+    setSaveSuccessMsg(
+      tr(
+        'File successfully saved to your Downloads folder!',
+        'تم حفظ الملف بنجاح في مجلد التنزيلات!'
+      )
+    );
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
@@ -119,7 +126,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         const writable = await handle.createWritable();
         await writable.write(jsonString);
         await writable.close();
-        setSaveSuccessMsg('Backup successfully saved to selected folder!');
+        setSaveSuccessMsg(
+          tr(
+            'Backup successfully saved to selected folder!',
+            'تم حفظ النسخة الاحتياطية بنجاح في المجلد المختار!'
+          )
+        );
         setTimeout(() => setSaveSuccessMsg(null), 4000);
       } catch (err: any) {
         if (err.name !== 'AbortError') {
@@ -171,7 +183,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
       }
     } else {
-      alert('Native sharing is not supported in this browser. Please use "Save As" or "Download".');
+      alert(
+        tr(
+          'Native sharing is not supported in this browser. Please use "Save As" or "Download".',
+          'خاصية المشاركة غير مدعومة في هذا المتصفح. يرجى استخدام "حفظ باسم" أو "تنزيل".'
+        )
+      );
     }
   };
 
@@ -180,7 +197,14 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!window.confirm('Warning: Restoring this backup will replace current database records. Continue?')) {
+    if (
+      !window.confirm(
+        tr(
+          'Warning: Restoring this backup will replace current database records. Continue?',
+          'تحذير: استعادة هذه النسخة الاحتياطية ستستبدل السجلات الحالية في قاعدة البيانات. هل تريد المتابعة؟'
+        )
+      )
+    ) {
       e.target.value = '';
       return;
     }
@@ -217,11 +241,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         }
 
         await onReloadData();
-        setImportStatus('Backup restored successfully!');
+        setImportStatus(
+          tr('Backup restored successfully!', 'تمت استعادة النسخة الاحتياطية بنجاح!')
+        );
         setTimeout(() => setImportStatus(null), 4000);
       } catch (err: any) {
         console.error(err);
-        alert(`Restore failed: ${err.message || 'Corrupted JSON file'}`);
+        alert(
+          tr(
+            `Restore failed: ${err.message || 'Corrupted JSON file'}`,
+            `فشلت الاستعادة: ${err.message || 'ملف JSON تالف'}`
+          )
+        );
       }
     };
     reader.readAsText(file);
@@ -265,11 +296,63 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 flex items-center gap-3 shadow-md animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
           <div className="text-xs">
-            <span className="font-bold block text-sm text-white">Database Successfully Reset</span>
-            All client accounts and financial ledger records were permanently cleared from local storage.
+            <span className="font-bold block text-sm text-white">
+              {tr('Database Successfully Reset', 'تمت إعادة ضبط قاعدة البيانات بنجاح')}
+            </span>
+            {tr(
+              'All client accounts and financial ledger records were permanently cleared from local storage.',
+              'تم مسح جميع حسابات الزبائن والسجلات المالية نهائياً من التخزين المحلي.'
+            )}
           </div>
         </div>
       )}
+
+      {/* Application Language Switcher Card */}
+      <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-white">
+                {tr('Application Interface Language', 'لغة واجهة التطبيق')}
+              </h3>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {tr(
+                  'Switch the entire application interface between English (LTR) and Arabic (RTL).',
+                  'قم بتبديل لغة التطبيق بالكامل بين اللغة العربية (من اليمين لليسار) والإنجليزية.'
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs shrink-0">
+            <button
+              type="button"
+              onClick={() => setLanguage('ar')}
+              className={`px-4 py-2 rounded-md font-bold transition-all cursor-pointer ${
+                lang === 'ar'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              العربية (Arabic)
+            </button>
+            <button
+              type="button"
+              onClick={() => setLanguage('en')}
+              className={`px-4 py-2 rounded-md font-bold transition-all cursor-pointer ${
+                lang === 'en'
+                  ? 'bg-sky-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              English
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Sender Configuration Card */}
       <div className="p-6 rounded-xl bg-[#141820] border border-slate-800 shadow-xs">
@@ -278,17 +361,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             <Building className="w-5 h-5 text-rose-500" />
             <div>
               <h3 className="text-base font-semibold text-white">
-                Sender Information & Return Address
+                {tr(
+                  'Sender Information & Return Address',
+                  'بيانات المرسل وعنوان الإرجاع'
+                )}
               </h3>
               <p className="text-xs text-slate-400 mt-0.5">
-                Printed as the official dispatch sender on A4 shipping label sheets
+                {tr(
+                  'Printed as the official dispatch sender on A4 shipping label sheets',
+                  'يُطبع كعنوان المرسل الرسمي على أوراق ملصقات الشحن A4'
+                )}
               </p>
             </div>
           </div>
           {isSavedAlert && (
             <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
               <CheckCircle2 className="w-4 h-4" />
-              <span>Saved!</span>
+              <span>{tr('Saved!', 'تم الحفظ!')}</span>
             </div>
           )}
         </div>
@@ -297,7 +386,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Company / Sender Name
+                {tr('Company / Sender Name', 'اسم الشركة / المرسل')}
               </label>
               <input
                 type="text"
@@ -311,7 +400,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Street & House Number
+                {tr('Street & House Number', 'الشارع ورقم المبنى')}
               </label>
               <input
                 type="text"
@@ -328,7 +417,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Postal Code (PLZ)
+                {tr('Postal Code (PLZ)', 'الرمز البريدي (PLZ)')}
               </label>
               <input
                 type="text"
@@ -342,7 +431,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                City / Location
+                {tr('City / Location', 'المدينة / الموقع')}
               </label>
               <input
                 type="text"
@@ -366,7 +455,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-white">
-                      Show Country Field in Addresses
+                      {tr(
+                        'Show Country Field in Addresses',
+                        'إظهار حقل الدولة في العناوين'
+                      )}
                     </span>
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
@@ -375,11 +467,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           : 'bg-slate-800 text-slate-400 border border-slate-700'
                       }`}
                     >
-                      {formSettings.showCountryField ? 'Visible' : 'Hidden (Germany Only)'}
+                      {formSettings.showCountryField
+                        ? tr('Visible', 'ظاهر')
+                        : tr('Hidden (Germany Only)', 'مخفي (ألمانيا فقط)')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
-                    When turned off, the Country field is hidden from customer forms and address views, simplifying daily operations since all customers are located in Germany.
+                    {tr(
+                      'When turned off, the Country field is hidden from customer forms and address views, simplifying daily operations since all customers are located in Germany.',
+                      'عند إيقافه، يتم إخفاء حقل الدولة من نماذج الزبائن والعناوين لتبسيط العمل اليومي نظراً لأن جميع الزبائن داخل ألمانيا.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -408,7 +505,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-white">
-                      Dynamic Financial Theme (Profit / Debt Mood Shift)
+                      {tr(
+                        'Dynamic Financial Theme (Profit / Debt Mood Shift)',
+                        'المظهر المالي التفاعلي (تدرج الألوان حسب الربح / الدين)'
+                      )}
                     </span>
                     <span
                       className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
@@ -417,11 +517,16 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           : 'bg-slate-800 text-slate-400 border border-slate-700'
                       }`}
                     >
-                      {formSettings.enableDynamicTheme ?? true ? 'Active' : 'Disabled'}
+                      {formSettings.enableDynamicTheme ?? true
+                        ? tr('Active', 'مفعّل')
+                        : tr('Disabled', 'معطّل')}
                     </span>
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1 max-w-xl">
-                    Dynamically shifts application aura, top glow line, indicators, and accents in graded color levels (vibrant emerald for high profit down to crimson for heavy debt).
+                    {tr(
+                      'Dynamically shifts application aura, top glow line, indicators, and accents in graded color levels (vibrant emerald for high profit down to crimson for heavy debt).',
+                      'يغير إضاءة التطبيق ومؤشراته اللونية تلقائياً حسب الوضع المالي (أخضر زمردي للأرباح المرتفعة وأحمر قرمزي للديون).'
+                    )}
                   </p>
                 </div>
               </div>
@@ -446,7 +551,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-xs cursor-pointer"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Save Sender Profile & Preferences</span>
+              <span>
+                {tr(
+                  'Save Sender Profile & Preferences',
+                  'حفظ بيانات المرسل والتفضيلات'
+                )}
+              </span>
             </button>
           </div>
         </form>
@@ -459,14 +569,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-2 text-white font-semibold text-base">
               <Download className="w-4 h-4 text-emerald-400" />
-              <span>Export Database Backup</span>
+              <span>{tr('Export Database Backup', 'تصدير نسخة احتياطية لقاعدة البيانات')}</span>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Open backup options to save your complete database: custom folder selection, direct download, clipboard copy, or system sharing.
+              {tr(
+                'Open backup options to save your complete database: custom folder selection, direct download, clipboard copy, or system sharing.',
+                'افتح خيارات النسخ الاحتياطي لحفظ قاعدة البيانات بالكامل: اختيار مجلد، تنزيل مباشر، نسخ للحافظة، أو مشاركة.'
+              )}
             </p>
             <div className="text-xs font-mono text-slate-500 space-y-1 mb-6">
-              <div>· Clients: {customers.length} records</div>
-              <div>· Financial ledger: {transactions.length} records</div>
+              <div>
+                · {tr('Clients:', 'الزبائن:')} {customers.length} {tr('records', 'سجل')}
+              </div>
+              <div>
+                · {tr('Financial ledger:', 'السجل المالي:')} {transactions.length}{' '}
+                {tr('records', 'سجل')}
+              </div>
             </div>
           </div>
 
@@ -475,7 +593,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className="w-full py-2.5 px-4 rounded-lg bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-xs font-semibold text-emerald-300 flex items-center justify-center gap-2 transition-colors shadow-xs cursor-pointer"
           >
             <Download className="w-4 h-4 text-emerald-400" />
-            <span>Open Backup Options...</span>
+            <span>{tr('Open Backup Options...', 'فتح خيارات النسخ الاحتياطي...')}</span>
           </button>
         </div>
 
@@ -484,10 +602,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div>
             <div className="flex items-center gap-2 mb-2 text-white font-semibold text-base">
               <Upload className="w-4 h-4 text-rose-400" />
-              <span>Restore Database Backup</span>
+              <span>{tr('Restore Database Backup', 'استعادة نسخة احتياطية')}</span>
             </div>
             <p className="text-xs text-slate-400 mb-4">
-              Select a valid WMS JSON backup file to restore records. Existing entries will be updated or replaced.
+              {tr(
+                'Select a valid WMS JSON backup file to restore records. Existing entries will be updated or replaced.',
+                'اختر ملف نسخة احتياطية JSON صالح لاستعادة السجلات. سيتم تحديث أو استبدال البيانات الحالية.'
+              )}
             </p>
             {importStatus && (
               <div className="p-2.5 mb-3 rounded bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
@@ -507,7 +628,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               />
               <span className="w-full cursor-pointer py-2.5 px-4 rounded-lg bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-xs font-semibold text-rose-300 flex items-center justify-center gap-2 transition-colors">
                 <Upload className="w-4 h-4" />
-                <span>Select & Restore JSON Backup</span>
+                <span>{tr('Select & Restore JSON Backup', 'اختيار واستعادة ملف JSON')}</span>
               </span>
             </label>
           </div>
@@ -520,10 +641,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-rose-400 font-semibold text-base">
               <ShieldAlert className="w-5 h-5 text-rose-500" />
-              <span>Factory Reset / Wipe Database</span>
+              <span>{tr('Factory Reset / Wipe Database', 'إعادة ضبط المصنع / مسح قاعدة البيانات')}</span>
             </div>
             <p className="text-xs text-slate-400 max-w-xl">
-              Permanently clears all customers ({customers.length}) and transaction records ({transactions.length}) from local browser storage. A multi-step security verification is enforced to prevent accidental data loss.
+              {tr(
+                `Permanently clears all customers (${customers.length}) and transaction records (${transactions.length}) from local browser storage. A multi-step security verification is enforced to prevent accidental data loss.`,
+                `يمسح نهائياً جميع الزبائن (${customers.length}) والسجلات المالية (${transactions.length}) من التخزين المحلي للمتصفح. يتطلب تحققاً أمنياً متعدد الخطوات لمنع الحذف غير المقصود.`
+              )}
             </p>
           </div>
 
@@ -537,7 +661,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
             className="px-5 py-2.5 rounded-lg bg-rose-950/70 hover:bg-rose-900/80 border border-rose-800 text-xs font-bold text-rose-300 flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer whitespace-nowrap"
           >
             <Trash2 className="w-4 h-4 text-rose-400" />
-            <span>Reset Database...</span>
+            <span>{tr('Reset Database...', 'مسح قاعدة البيانات...')}</span>
           </button>
         </div>
       </div>
@@ -553,10 +677,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div>
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Download className="w-4 h-4 text-emerald-400" />
-                  <span>Backup Export Options</span>
+                  <span>{tr('Backup Export Options', 'خيارات تصدير النسخة الاحتياطية')}</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Select your preferred format and storage destination for the WMS database
+                  {tr(
+                    'Select your preferred format and storage destination for the WMS database',
+                    'اختر التنسيق ووجهة الحفظ المفضلة لقاعدة بيانات المستودع'
+                  )}
                 </p>
               </div>
               <button
@@ -578,7 +705,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
               {/* Summary Pill Strip */}
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>Payload: {customers.length} Clients · {transactions.length} Transactions</span>
+                <span>
+                  {tr('Payload:', 'المحتوى:')} {customers.length} {tr('Clients', 'زبون')} ·{' '}
+                  {transactions.length} {tr('Transactions', 'حركة مالية')}
+                </span>
                 <span className="text-emerald-400 font-semibold">JSON Format</span>
               </div>
 
@@ -586,7 +716,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    File Name
+                    {tr('File Name', 'اسم الملف')}
                   </label>
                   <div className="flex items-center">
                     <input
@@ -603,7 +733,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div>
                   <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                    Formatting
+                    {tr('Formatting', 'التنسيق')}
                   </label>
                   <div className="grid grid-cols-2 gap-2 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
                     <button
@@ -615,7 +745,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Formatted (Indent 2)
+                      {tr('Formatted (Indent 2)', 'منسق (واضح القراءة)')}
                     </button>
                     <button
                       type="button"
@@ -626,7 +756,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
-                      Compact (Minified)
+                      {tr('Compact (Minified)', 'مضغوط (حجم أصغر)')}
                     </button>
                   </div>
                 </div>
@@ -635,7 +765,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {/* The Menu of Saving Options */}
               <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                  Select Save Destination:
+                  {tr('Select Save Destination:', 'اختر وجهة الحفظ:')}
                 </span>
 
                 {/* Option A: Native Save As (Choose Directory) */}
@@ -649,15 +779,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Save As... (Choose Destination Folder)
+                        {tr('Save As... (Choose Destination Folder)', 'حفظ باسم... (اختيار المجلد)')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Pick exact local folder, external drive, or network share
+                        {tr(
+                          'Pick exact local folder, external drive, or network share',
+                          'اختر مجلداً محدداً على جهازك أو قرصاً خارجياً'
+                        )}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
-                    Browse →
+                    {tr('Browse →', 'استعراض ←')}
                   </span>
                 </button>
 
@@ -672,15 +805,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Download to Downloads Folder
+                        {tr('Download to Downloads Folder', 'تنزيل مباشر إلى مجلد التنزيلات')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Quick download directly to your default browser downloads path
+                        {tr(
+                          'Quick download directly to your default browser downloads path',
+                          'تنزيل سريع مباشرة إلى مسار التنزيلات الافتراضي في المتصفح'
+                        )}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                    Download ↓
+                    {tr('Download ↓', 'تنزيل ↓')}
                   </span>
                 </button>
 
@@ -695,18 +831,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Copy JSON to Clipboard
+                        {tr('Copy JSON to Clipboard', 'نسخ كود JSON إلى الحافظة')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Copy raw JSON string to paste into text editor or email
+                        {tr(
+                          'Copy raw JSON string to paste into text editor or email',
+                          'نسخ النص البرمجي للصقه في محرر نصوص أو بريد إلكتروني'
+                        )}
                       </div>
                     </div>
                   </div>
                   {copySuccess ? (
-                    <span className="text-xs font-bold text-emerald-400">Copied! ✓</span>
+                    <span className="text-xs font-bold text-emerald-400">
+                      {tr('Copied! ✓', 'تم النسخ! ✓')}
+                    </span>
                   ) : (
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Copy
+                      {tr('Copy', 'نسخ')}
                     </span>
                   )}
                 </button>
@@ -723,15 +864,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-white">
-                          Share File via System Menu
+                          {tr('Share File via System Menu', 'مشاركة الملف عبر النظام')}
                         </div>
                         <div className="text-[11px] text-slate-400">
-                          AirDrop, email attachment, or local device apps
+                          {tr(
+                            'AirDrop, email attachment, or local device apps',
+                            'إرسال عبر البريد أو تطبيقات الجهاز'
+                          )}
                         </div>
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Share
+                      {tr('Share', 'مشاركة')}
                     </span>
                   </button>
                 )}
@@ -747,8 +891,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <FileCode className="w-3.5 h-3.5 text-rose-500" />
                   <span>
                     {showJsonPreview
-                      ? 'Hide JSON Preview'
-                      : 'Preview JSON Payload Content...'}
+                      ? tr('Hide JSON Preview', 'إخفاء معاينة كود JSON')
+                      : tr('Preview JSON Payload Content...', 'معاينة محتوى كود JSON...')}
                   </span>
                 </button>
 
@@ -769,7 +913,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setIsExportModalOpen(false)}
                 className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
-                Close
+                {tr('Close', 'إغلاق')}
               </button>
             </div>
           </div>
@@ -790,10 +934,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">
-                    Permanent Database Reset
+                    {tr('Permanent Database Reset', 'مسح نهائي لقاعدة البيانات')}
                   </h3>
                   <p className="text-xs text-rose-300/80">
-                    Security Check: Multi-step verification required
+                    {tr(
+                      'Security Check: Multi-step verification required',
+                      'فحص الأمان: مطلوب تأكيد متعدد الخطوات'
+                    )}
                   </p>
                 </div>
               </div>
@@ -810,10 +957,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-800/60 text-xs text-rose-200 space-y-2">
                 <div className="font-bold text-rose-300 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
-                  <span>Warning: Irreversible Action</span>
+                  <span>{tr('Warning: Irreversible Action', 'تحذير: إجراء لا يمكن التراجع عنه')}</span>
                 </div>
                 <p className="text-slate-300 leading-relaxed">
-                  This action will permanently delete all client accounts ({customers.length}) and all finance and order ledger entries ({transactions.length}) from local storage. Deleted data cannot be recovered without a previous backup.
+                  {tr(
+                    `This action will permanently delete all client accounts (${customers.length}) and all finance and order ledger entries (${transactions.length}) from local storage. Deleted data cannot be recovered without a previous backup.`,
+                    `سيؤدي هذا الإجراء إلى حذف جميع حسابات الزبائن (${customers.length}) وجميع قيود المالية والطلبيات (${transactions.length}) نهائياً من التخزين المحلي. لا يمكن استرجاع البيانات المحذوفة بدون نسخة احتياطية سابقة.`
+                  )}
                 </p>
               </div>
 
@@ -827,10 +977,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
                 <div className="text-xs">
                   <span className="font-semibold text-white block">
-                    1. Acknowledge Irreversibility
+                    {tr('1. Acknowledge Irreversibility', '1. الإقرار بعدم إمكانية التراجع')}
                   </span>
                   <span className="text-slate-400 mt-0.5 block">
-                    I understand that all database records will be permanently wiped immediately.
+                    {tr(
+                      'I understand that all database records will be permanently wiped immediately.',
+                      'أدرك أن جميع سجلات قاعدة البيانات سيتم مسحها نهائياً وبشكل فوري.'
+                    )}
                   </span>
                 </div>
               </label>
@@ -845,10 +998,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 />
                 <div className="text-xs">
                   <span className="font-semibold text-white block">
-                    2. Backup Verification
+                    {tr('2. Backup Verification', '2. تأكيد النسخة الاحتياطية')}
                   </span>
                   <span className="text-slate-400 mt-0.5 block">
-                    I have exported a JSON backup or confirm that I no longer need this data.
+                    {tr(
+                      'I have exported a JSON backup or confirm that I no longer need this data.',
+                      'لقد قمت بتصدير نسخة احتياطية JSON أو أؤكد أنني لم أعد بحاجة لهذه البيانات.'
+                    )}
                   </span>
                 </div>
               </label>
@@ -856,10 +1012,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
               {/* Confirmation Step 3: Security Phrase Input */}
               <div className="p-3.5 rounded-lg bg-slate-900/90 border border-slate-800 space-y-2">
                 <label className="block text-xs font-semibold text-white">
-                  3. Enter Security Confirmation Phrase:
+                  {tr(
+                    '3. Enter Security Confirmation Phrase:',
+                    '3. أدخل عبارة التأكيد الأمنية:'
+                  )}
                 </label>
                 <p className="text-[11px] text-slate-400">
-                  Type <strong className="text-rose-400 font-mono">DELETE</strong> into the field below to unlock the button:
+                  {tr('Type', 'اكتب')}{' '}
+                  <strong className="text-rose-400 font-mono">DELETE</strong>{' '}
+                  {tr(
+                    'into the field below to unlock the button:',
+                    'في الحقل أدناه لتفعيل زر المسح:'
+                  )}
                 </p>
                 <input
                   type="text"
@@ -878,7 +1042,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 onClick={() => setIsResetModalOpen(false)}
                 className="px-4 py-2 text-xs font-semibold text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
-                Cancel
+                {tr('Cancel', 'إلغاء')}
               </button>
 
               <button
@@ -890,12 +1054,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 {isResetting ? (
                   <>
                     <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    <span>Wiping Database...</span>
+                    <span>{tr('Wiping Database...', 'جاري مسح البيانات...')}</span>
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-3.5 h-3.5" />
-                    <span>Permanently Wipe All Data</span>
+                    <span>{tr('Permanently Wipe All Data', 'مسح جميع البيانات نهائياً')}</span>
                   </>
                 )}
               </button>

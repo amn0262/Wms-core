@@ -27,6 +27,7 @@ import type {
   OrderStatus,
 } from '../types';
 import { getOrderPaymentInfo } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 export type MasterSectionTab =
   | 'ALL'
@@ -53,7 +54,7 @@ interface UnifiedLedgerItem {
   supplierId?: number | null;
   reference: string;
   amount: number;
-  isPositive: boolean; // true = revenue/inflow or debt reduction, false = cost/bill outflow
+  isPositive: boolean;
   orderObj?: CustomerOrder;
   supplierTxObj?: SupplierTransaction;
   financeTxObj?: Transaction;
@@ -106,6 +107,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   onOpenSupplierTransactionModal,
   onDeleteSupplierTransaction,
 }) => {
+  const {
+    tr,
+    translateCategory,
+    translateOrderStatus,
+    translatePaymentStatus,
+    translatePaymentMethod,
+  } = useI18n();
+
   const [activeSection, setActiveSection] = useState<MasterSectionTab>('ALL');
   const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
 
@@ -135,7 +144,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
     return map;
   }, [suppliers]);
 
-  // Map financeTransactionId -> CustomerOrder so we don't duplicate an order and its auto-synced revenue row
   const linkedFinanceOrderMap = useMemo(() => {
     const map: Record<number, CustomerOrder> = {};
     orders.forEach((o) => {
@@ -156,19 +164,19 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       const cust = customerMap[o.customerId];
       const custName = cust
         ? `${cust.firstName} ${cust.lastName}${cust.company ? ` (${cust.company})` : ''}`
-        : o.customerName || `Customer #${o.customerId}`;
+        : o.customerName || `${tr('Customer', 'زبون')} #${o.customerId}`;
 
       const trackBadge = o.trackingNumber
         ? `${o.carrier || 'DHL'}: ${o.trackingNumber}`
-        : o.carrier || 'Pending Carrier';
+        : o.carrier || tr('Pending Carrier', 'بانتظار الشحن');
 
       const payInfo = getOrderPaymentInfo(o);
       const payLabel =
         payInfo.paymentStatus === 'Paid'
-          ? 'Paid'
+          ? tr('Paid', 'مدفوعة')
           : payInfo.paymentStatus === 'Partially Paid'
-          ? `Partial (Due €${payInfo.remaining.toFixed(0)})`
-          : `Unpaid (Due €${payInfo.remaining.toFixed(0)})`;
+          ? `${tr('Partial', 'جزئي')} (${tr('Due', 'متبقي')} €${payInfo.remaining.toFixed(0)})`
+          : `${tr('Unpaid', 'غير مدفوعة')} (${tr('Due', 'متبقي')} €${payInfo.remaining.toFixed(0)})`;
 
       list.push({
         uid: `order-${o.id}`,
@@ -177,7 +185,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         date: o.orderDate,
         timestamp: o.timestamp,
         section: 'ORDERS',
-        badgeLabel: `Order · ${o.status} · ${payLabel}`,
+        badgeLabel: `${tr('Order', 'طلبية')} · ${translateOrderStatus(o.status)} · ${payLabel}`,
         badgeColor:
           payInfo.paymentStatus === 'Unpaid'
             ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
@@ -187,7 +195,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
             : 'bg-sky-500/15 text-sky-300 border-sky-500/30',
         title: `${o.orderNumber} — ${o.itemsDescription}`,
-        subtitle: `Payment: ${payInfo.paymentStatus} (Paid €${payInfo.paid.toFixed(2)} / Due €${payInfo.remaining.toFixed(2)}) · Status: ${o.status}`,
+        subtitle: `${tr('Payment:', 'الدفع:')} ${translatePaymentStatus(
+          payInfo.paymentStatus
+        )} (${tr('Paid', 'المدفوع')} €${payInfo.paid.toFixed(2)} / ${tr(
+          'Due',
+          'المتبقي'
+        )} €${payInfo.remaining.toFixed(2)}) · ${tr('Status:', 'الحالة:')} ${translateOrderStatus(
+          o.status
+        )}`,
         partyName: custName,
         customerId: o.customerId,
         reference: trackBadge,
@@ -201,7 +216,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
     supplierTransactions.forEach((st) => {
       if (!st.id) return;
       const sup = supplierMap[st.supplierId];
-      const supName = sup ? sup.name : `Supplier #${st.supplierId}`;
+      const supName = sup ? sup.name : `${tr('Supplier', 'مورد')} #${st.supplierId}`;
       const isBill = st.type === 'Bill';
 
       list.push({
@@ -211,14 +226,21 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         date: st.date,
         timestamp: st.timestamp,
         section: 'SUPPLIER_GOODS',
-        badgeLabel: isBill ? 'Supplier Goods Bill' : 'Supplier Payment',
+        badgeLabel: isBill
+          ? tr('Supplier Goods Bill', 'فاتورة شراء بضاعة (مورد)')
+          : tr('Supplier Payment', 'دفعة مسددة لمورد'),
         badgeColor: isBill
           ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
           : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
         title: st.description,
         subtitle: isBill
-          ? 'Merchandise & inventory purchase on account (Payable +)'
-          : `Supplier debt settlement (${st.paymentMethod || 'Bank Transfer'})`,
+          ? tr(
+              'Merchandise & inventory purchase on account (Payable +)',
+              'شراء بضاعة ومخزون على الحساب (زيادة ذمة المورد)'
+            )
+          : `${tr('Supplier debt settlement', 'تسديد دفعة لحساب المورد')} (${translatePaymentMethod(
+              st.paymentMethod || 'Bank Transfer'
+            )})`,
         partyName: supName,
         supplierId: st.supplierId,
         reference: st.referenceInvoice || '—',
@@ -228,29 +250,29 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       });
     });
 
-    // 3. All Financial Ledger Transactions (excluding auto-synced order revenues that are already shown via their CustomerOrder object)
+    // 3. All Financial Ledger Transactions
     transactions.forEach((t) => {
       if (!t.id) return;
       if (linkedFinanceOrderMap[t.id]) {
-        return; // Already represented as a rich CustomerOrder entry
+        return;
       }
 
       const cust = t.customerId ? customerMap[t.customerId] : null;
       const custName = cust
         ? `${cust.firstName} ${cust.lastName}${cust.company ? ` (${cust.company})` : ''}`
-        : 'Warehouse / General';
+        : tr('Warehouse / General', 'المستودع / عام');
 
       let sec: MasterSectionTab = 'OPERATING';
-      let badgeLabel: string = t.category;
+      let badgeLabel: string = translateCategory(t.category);
       let badgeColor = 'bg-slate-800 text-slate-300 border-slate-700';
 
       if (t.category === 'Owner Capital Injection') {
         sec = 'OWNER_PERSONAL';
-        badgeLabel = 'إيداع من المال الخاص (+€)';
+        badgeLabel = tr('Owner Capital Injection (+€)', 'إيداع من المال الخاص (+€)');
         badgeColor = 'bg-teal-500/15 text-teal-300 border-teal-500/30';
       } else if (t.category === 'Personal Withdrawal') {
         sec = 'OWNER_PERSONAL';
-        badgeLabel = 'سحب شخصي (-€)';
+        badgeLabel = tr('Personal Withdrawal (-€)', 'سحب شخصي (-€)');
         badgeColor = 'bg-orange-500/15 text-orange-300 border-orange-500/30';
       } else if (
         t.category === 'Order Revenue' ||
@@ -260,34 +282,34 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         sec = 'ORDERS';
         badgeLabel =
           t.category === 'Customer Payment'
-            ? 'Customer Payment (تسديد رصيد)'
+            ? tr('Customer Payment', 'دفعة زبون (تسديد رصيد)')
             : t.category === 'Order Revenue'
-            ? 'Order Revenue'
-            : 'Other Income';
+            ? tr('Order Revenue', 'إيراد طلبية')
+            : tr('Other Income', 'إيرادات أخرى');
         badgeColor = 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30';
       } else if (t.category === 'Goods/Inventory') {
         sec = 'SUPPLIER_GOODS';
-        badgeLabel = 'Direct Goods Purchase';
+        badgeLabel = tr('Direct Goods Purchase', 'شراء بضاعة مباشر');
         badgeColor = 'bg-rose-500/15 text-rose-300 border-rose-500/30';
       } else if (t.category === 'Packaging & Supplies') {
         sec = 'PACKAGING';
-        badgeLabel = 'Packaging & Supplies';
+        badgeLabel = tr('Packaging & Supplies', 'شراء مواد تغليف');
         badgeColor = 'bg-purple-500/15 text-purple-300 border-purple-500/30';
       } else if (t.category === 'Shipping') {
         sec = 'SHIPPING';
-        badgeLabel = 'Local Parcel Shipping';
+        badgeLabel = tr('Local Parcel Shipping', 'تكلفة شحن محلي');
         badgeColor = 'bg-sky-500/15 text-sky-300 border-sky-500/30';
       } else {
         sec = 'OPERATING';
-        badgeLabel = t.category;
+        badgeLabel = translateCategory(t.category);
         badgeColor = 'bg-amber-500/15 text-amber-300 border-amber-500/30';
       }
 
       const partyDisplay =
         t.category === 'Owner Capital Injection'
-          ? 'Owner Personal Funds (المال الخاص)'
+          ? tr('Owner Personal Funds', 'المال الخاص (إيداع مالك)')
           : t.category === 'Personal Withdrawal'
-          ? 'Owner Personal Draw (سحب شخصي)'
+          ? tr('Owner Personal Draw', 'سحب شخصي (مسحوبات مالك)')
           : custName;
 
       list.push({
@@ -300,15 +322,15 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         badgeLabel,
         badgeColor,
         title: t.description,
-        subtitle: `${t.type} · ${
+        subtitle: `${t.type === 'Income' ? tr('Income', 'وارد') : tr('Expense', 'منصرف')} · ${
           t.category === 'Shipping'
-            ? 'Standard Local Ground Carrier'
+            ? tr('Standard Local Ground Carrier', 'شحن بري محلي قياسي')
             : t.category === 'Owner Capital Injection'
-            ? 'إضافة نقود من المال الخاص إلى رصيد العمل'
+            ? tr('Cash injected from personal funds', 'إضافة نقود من المال الخاص إلى رصيد العمل')
             : t.category === 'Personal Withdrawal'
-            ? 'سحب نقود للاستخدام الشخصي من رصيد العمل'
-            : t.category
-        }${t.paymentMethod ? ` (${t.paymentMethod})` : ''}`,
+            ? tr('Cash withdrawn for personal use', 'سحب نقود للاستخدام الشخصي من رصيد العمل')
+            : translateCategory(t.category)
+        }${t.paymentMethod ? ` (${translatePaymentMethod(t.paymentMethod)})` : ''}`,
         partyName: partyDisplay,
         customerId: t.customerId,
         reference: t.invoiceNumber || '—',
@@ -323,7 +345,19 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         new Date(b.date).getTime() - new Date(a.date).getTime() ||
         b.timestamp - a.timestamp
     );
-  }, [orders, supplierTransactions, transactions, customerMap, supplierMap, linkedFinanceOrderMap]);
+  }, [
+    orders,
+    supplierTransactions,
+    transactions,
+    customerMap,
+    supplierMap,
+    linkedFinanceOrderMap,
+    tr,
+    translateCategory,
+    translateOrderStatus,
+    translatePaymentStatus,
+    translatePaymentMethod,
+  ]);
 
   // Section Totals & Counts
   const sectionStats = useMemo(() => {
@@ -400,12 +434,10 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
     now.setHours(23, 59, 59, 999);
 
     return unifiedOperations.filter((item) => {
-      // 1. Section Tab Filter
       if (activeSection !== 'ALL' && item.section !== activeSection) {
         return false;
       }
 
-      // 2. Date Preset / Custom Range Filter
       if (datePreset !== 'ALL') {
         const itemDate = new Date(item.date);
         if (datePreset === '7D') {
@@ -426,17 +458,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         }
       }
 
-      // 3. Customer Filter
       if (customerFilter !== 'ALL' && String(item.customerId || '') !== customerFilter) {
         return false;
       }
 
-      // 4. Supplier Filter
       if (supplierFilter !== 'ALL' && String(item.supplierId || '') !== supplierFilter) {
         return false;
       }
 
-      // 5. Local Carrier Filter
       if (carrierFilter !== 'ALL') {
         const cLow = carrierFilter.toLowerCase();
         const ordCarrier = (item.orderObj?.carrier || '').toLowerCase();
@@ -447,14 +476,12 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         }
       }
 
-      // 6. Order Status Filter
       if (orderStatusFilter !== 'ALL') {
         if (!item.orderObj || item.orderObj.status !== orderStatusFilter) {
           return false;
         }
       }
 
-      // 7. Keyword Search
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchTitle = item.title.toLowerCase().includes(q);
@@ -674,7 +701,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
 
   // Context-Aware Delete Handler
   const handleDeleteOperation = async (item: UnifiedLedgerItem) => {
-    if (!window.confirm(`Delete operation "${item.title}" (€${item.amount.toFixed(2)})?`)) {
+    if (
+      !window.confirm(
+        tr(
+          `Delete operation "${item.title}" (€${item.amount.toFixed(2)})?`,
+          `هل أنت متأكد من حذف العملية "${item.title}" (€${item.amount.toFixed(2)})؟`
+        )
+      )
+    ) {
       return;
     }
     if (item.source === 'order' && onDeleteOrder) {
@@ -700,7 +734,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
   return (
     <div className="space-y-6">
       {/* ================================================================= */}
-      {/* 1. DEDICATED SECTION CARDS / TABS (CLICK TO ENTER EACH SECTION)   */}
+      {/* 1. DEDICATED SECTION CARDS / TABS                                 */}
       {/* ================================================================= */}
       <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         {/* All Operations */}
@@ -713,13 +747,18 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-slate-300 mb-1">
-            <span>All Operations</span>
+            <span>{tr('All Operations', 'جميع العمليات')}</span>
             <Receipt className="w-3.5 h-3.5 text-rose-400" />
           </div>
           <div className="text-lg font-bold font-mono text-white">
-            {sectionStats.totalCount} <span className="text-xs font-normal text-slate-400">Records</span>
+            {sectionStats.totalCount}{' '}
+            <span className="text-xs font-normal text-slate-400">
+              {tr('Records', 'سجل')}
+            </span>
           </div>
-          <div className="text-[10px] text-slate-400 mt-0.5">Master Unified Ledger</div>
+          <div className="text-[10px] text-slate-400 mt-0.5">
+            {tr('Master Unified Ledger', 'السجل الموحد الشامل')}
+          </div>
         </button>
 
         {/* Customer Orders Section */}
@@ -732,14 +771,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400 mb-1">
-            <span>Orders & Status</span>
+            <span>{tr('Orders & Status', 'الطلبيات والدفعات')}</span>
             <Package className="w-3.5 h-3.5" />
           </div>
           <div className="text-lg font-bold font-mono text-emerald-400">
             €{sectionStats.ordersTotal.toFixed(0)}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {sectionStats.ordersCount} Customer Orders
+            {sectionStats.ordersCount} {tr('Customer Orders', 'طلبيات ودفعات')}
           </div>
         </button>
 
@@ -753,14 +792,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-rose-400 mb-1">
-            <span>Supplier Goods</span>
+            <span>{tr('Supplier Goods', 'بضاعة الموردين')}</span>
             <Building2 className="w-3.5 h-3.5" />
           </div>
           <div className="text-lg font-bold font-mono text-rose-400">
             €{sectionStats.supplierGoodsBills.toFixed(0)}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {sectionStats.supplierGoodsCount} Bills & Settlements
+            {sectionStats.supplierGoodsCount} {tr('Bills & Settlements', 'فواتير ودفعات')}
           </div>
         </button>
 
@@ -774,14 +813,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-purple-400 mb-1">
-            <span>Packaging Buy</span>
+            <span>{tr('Packaging Buy', 'مواد التغليف')}</span>
             <Layers className="w-3.5 h-3.5" />
           </div>
           <div className="text-lg font-bold font-mono text-purple-400">
             €{sectionStats.packagingTotal.toFixed(2)}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {sectionStats.packagingCount} Packaging Batches
+            {sectionStats.packagingCount} {tr('Packaging Batches', 'مشتريات تغليف')}
           </div>
         </button>
 
@@ -795,14 +834,14 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-sky-400 mb-1">
-            <span>Local Shipping</span>
+            <span>{tr('Local Shipping', 'تكاليف الشحن')}</span>
             <Truck className="w-3.5 h-3.5" />
           </div>
           <div className="text-lg font-bold font-mono text-sky-400">
             €{sectionStats.shippingTotal.toFixed(2)}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {sectionStats.shippingCount} Local Parcel Vouchers
+            {sectionStats.shippingCount} {tr('Local Parcel Vouchers', 'بوالص شحن محلي')}
           </div>
         </button>
 
@@ -816,7 +855,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-teal-400 mb-1">
-            <span>المال الخاص والسحب</span>
+            <span>{tr('Owner & Draws', 'المال الخاص والسحب')}</span>
             <Wallet className="w-3.5 h-3.5" />
           </div>
           <div
@@ -841,20 +880,20 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           }`}
         >
           <div className="flex items-center justify-between text-[11px] font-semibold text-amber-400 mb-1">
-            <span>Facility & Ops</span>
+            <span>{tr('Facility & Ops', 'مصاريف المستودع')}</span>
             <Receipt className="w-3.5 h-3.5" />
           </div>
           <div className="text-lg font-bold font-mono text-amber-400">
             €{sectionStats.operatingTotal.toFixed(2)}
           </div>
           <div className="text-[10px] text-slate-400 mt-0.5">
-            {sectionStats.operatingCount} Operating Entries
+            {sectionStats.operatingCount} {tr('Operating Entries', 'قيد تشغيلي')}
           </div>
         </button>
       </div>
 
       {/* ================================================================= */}
-      {/* 2. MULTI-LINE SVG TREND CHART FOR ACTIVE SECTION OR ALL STREAMS   */}
+      {/* 2. MULTI-LINE SVG TREND CHART                                     */}
       {/* ================================================================= */}
       <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -863,23 +902,47 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               <TrendingUp className="w-4 h-4 text-emerald-400" />
               <h3 className="text-sm font-semibold text-white">
                 {activeSection === 'ALL' &&
-                  'Master Operations Trend Lines (Orders, Supplier Goods, Packaging, Local Shipping & Personal Funds)'}
+                  tr(
+                    'Master Operations Trend Lines (Orders, Supplier Goods, Packaging, Local Shipping & Personal Funds)',
+                    'المنحنيات البيانية الشاملة للعمليات (الطلبيات، الموردين، التغليف، الشحن، والمال الخاص)'
+                  )}
                 {activeSection === 'ORDERS' &&
-                  'Customer Orders & Consignment Revenue Trend Line'}
+                  tr(
+                    'Customer Orders & Consignment Revenue Trend Line',
+                    'المنحنى البياني لطلبيات الزبائن والدفعات المحصلة'
+                  )}
                 {activeSection === 'SUPPLIER_GOODS' &&
-                  'Supplier Goods Purchases & Inventory Settlements Trend Line'}
+                  tr(
+                    'Supplier Goods Purchases & Inventory Settlements Trend Line',
+                    'المنحنى البياني لمشتريات بضاعة الموردين والدفعات'
+                  )}
                 {activeSection === 'PACKAGING' &&
-                  'Packaging Materials & Cartons Expenditure Trend Line'}
+                  tr(
+                    'Packaging Materials & Cartons Expenditure Trend Line',
+                    'المنحنى البياني لمشتريات مواد التغليف والكراتين'
+                  )}
                 {activeSection === 'SHIPPING' &&
-                  'Standard Local Parcel Shipping Expenditure Trend Line'}
+                  tr(
+                    'Standard Local Parcel Shipping Expenditure Trend Line',
+                    'المنحنى البياني لتكاليف شحن الطرود المحلية'
+                  )}
                 {activeSection === 'OWNER_PERSONAL' &&
-                  'Owner Personal Capital Injections (+€) vs Personal Cash Withdrawals (-€) Trend Line'}
+                  tr(
+                    'Owner Personal Capital Injections (+€) vs Personal Cash Withdrawals (-€) Trend Line',
+                    'المنحنى البياني للإيداعات من المال الخاص (+€) مقابل المسحوبات الشخصية (-€)'
+                  )}
                 {activeSection === 'OPERATING' &&
-                  'Warehouse Facility, Vehicle & Administrative Cost Trend Line'}
+                  tr(
+                    'Warehouse Facility, Vehicle & Administrative Cost Trend Line',
+                    'المنحنى البياني لمصاريف المستودع والمركبات والتشغيل'
+                  )}
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Visual trajectory across recorded dates — switch tabs above to isolate any specific operation stream
+              {tr(
+                'Visual trajectory across recorded dates — switch tabs above to isolate any specific operation stream',
+                'مسار العمليات عبر التواريخ المسجلة — اختر أي قسم بالأعلى لعرض بياناته ومنحناه الخاص'
+              )}
             </p>
           </div>
 
@@ -894,7 +957,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                     : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                {r}
+                {r === 'ALL' ? tr('ALL', 'الكل') : r}
               </button>
             ))}
           </div>
@@ -941,7 +1004,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               strokeWidth="1"
             />
 
-            {/* Orders Line (Emerald) */}
             {(activeSection === 'ALL' || activeSection === 'ORDERS') &&
               ordersCurve.path && (
                 <path
@@ -954,7 +1016,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Supplier Goods Line (Rose) */}
             {(activeSection === 'ALL' || activeSection === 'SUPPLIER_GOODS') &&
               supplierCurve.path && (
                 <path
@@ -967,7 +1028,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Packaging Line (Purple) */}
             {(activeSection === 'ALL' || activeSection === 'PACKAGING') &&
               packagingCurve.path && (
                 <path
@@ -981,7 +1041,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Local Shipping Line (Sky) */}
             {(activeSection === 'ALL' || activeSection === 'SHIPPING') &&
               shippingCurve.path && (
                 <path
@@ -995,7 +1054,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Owner Personal Capital Added (Teal) */}
             {(activeSection === 'ALL' || activeSection === 'OWNER_PERSONAL') &&
               ownerAddedCurve.path && (
                 <path
@@ -1008,7 +1066,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Owner Personal Cash Withdrawn (Orange) */}
             {(activeSection === 'ALL' || activeSection === 'OWNER_PERSONAL') &&
               ownerWithdrawnCurve.path && (
                 <path
@@ -1022,7 +1079,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                 />
               )}
 
-            {/* Operating Line (Amber) */}
             {activeSection === 'OPERATING' && operatingCurve.path && (
               <path
                 d={operatingCurve.path}
@@ -1034,7 +1090,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               />
             )}
 
-            {/* Date Labels along X-Axis */}
             {trendData.map((d, idx) => {
               const x =
                 padX + (idx * (chartW - padX * 2)) / Math.max(trendData.length - 1, 1);
@@ -1060,31 +1115,33 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
           <div className="flex flex-wrap items-center gap-4">
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-emerald-500 rounded-full" />
-              Orders (€{sectionStats.ordersTotal.toFixed(0)})
+              {tr('Orders', 'الطلبيات')} (€{sectionStats.ordersTotal.toFixed(0)})
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-rose-500 rounded-full" />
-              Supplier Goods (€{sectionStats.supplierGoodsBills.toFixed(0)})
+              {tr('Supplier Goods', 'بضاعة الموردين')} (€{sectionStats.supplierGoodsBills.toFixed(0)})
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-purple-500 rounded-full" />
-              Packaging (€{sectionStats.packagingTotal.toFixed(0)})
+              {tr('Packaging', 'التغليف')} (€{sectionStats.packagingTotal.toFixed(0)})
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-sky-500 rounded-full" />
-              Local Shipping (€{sectionStats.shippingTotal.toFixed(0)})
+              {tr('Local Shipping', 'الشحن المحلي')} (€{sectionStats.shippingTotal.toFixed(0)})
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-teal-400 rounded-full" />
-              +Personal Funds (€{sectionStats.ownerAddedTotal.toFixed(0)})
+              {tr('+Personal Funds', '+المال الخاص')} (€{sectionStats.ownerAddedTotal.toFixed(0)})
             </span>
             <span className="flex items-center gap-1.5 text-slate-300">
               <span className="w-3 h-1 bg-orange-400 rounded-full" />
-              -Personal Draw (€{sectionStats.ownerWithdrawnTotal.toFixed(0)})
+              {tr('-Personal Draw', '-سحب شخصي')} (€{sectionStats.ownerWithdrawnTotal.toFixed(0)})
             </span>
           </div>
           <span className="font-mono text-slate-400">
-            Showing <strong className="text-white">{filteredOperations.length}</strong> matching entries
+            {tr('Showing', 'عرض')}{' '}
+            <strong className="text-white">{filteredOperations.length}</strong>{' '}
+            {tr('matching entries', 'عملية مطابقة')}
           </span>
         </div>
       </div>
@@ -1093,118 +1150,65 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
       {/* 3. CONTEXT-AWARE QUICK ADD BAR + ADVANCED FILTERING TOOLS         */}
       {/* ================================================================= */}
       <div className="p-5 rounded-xl bg-[#141820] border border-slate-800 shadow-xs space-y-4">
-        {/* Top Row: Quick Context-Specific Add Buttons */}
         <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-800/80">
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-300">
             <PlusCircle className="w-4 h-4 text-rose-500" />
-            <span>Quick Add Operation by Type:</span>
+            <span>
+              {tr(
+                'Unified Operations & Accounting Actions:',
+                'إجراءات المحاسبة والعمليات الموحدة:'
+              )}
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => onOpenTransactionModal()}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+            >
+              <PlusCircle className="w-4 h-4" />
+              <span>
+                {tr(
+                  '+ Record Entry (Income / Expense)',
+                  '+ تسجيل قيد جديد (إيراد / مصروف)'
+                )}
+              </span>
+            </button>
+
             {onOpenOrderModal && (
               <button
                 onClick={() => onOpenOrderModal()}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 border border-emerald-500/40 text-xs font-semibold text-emerald-300 flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <Package className="w-3.5 h-3.5" />
-                <span>+ Customer Order</span>
+                <Package className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{tr('+ New Customer Order', '+ طلبية زبون جديدة')}</span>
               </button>
             )}
-
-            {onOpenReceivePaymentModal && (
-              <button
-                onClick={() => onOpenReceivePaymentModal()}
-                className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-              >
-                <Wallet className="w-3.5 h-3.5" />
-                <span>+ Receive Customer Payment</span>
-              </button>
-            )}
-
-            <button
-              onClick={() => onOpenTransactionModal('Owner Capital Injection')}
-              className="px-3 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-xs font-semibold text-teal-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Add cash from personal funds into business account"
-            >
-              <ArrowDownLeft className="w-3.5 h-3.5 text-teal-400" />
-              <span>+ إضافة نقود من المال الخاص</span>
-            </button>
-
-            <button
-              onClick={() => onOpenTransactionModal('Personal Withdrawal')}
-              className="px-3 py-1.5 rounded-lg bg-orange-600/20 hover:bg-orange-600/30 border border-orange-500/40 text-xs font-semibold text-orange-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-              title="Withdraw cash from business for personal use"
-            >
-              <ArrowUpRight className="w-3.5 h-3.5 text-orange-400" />
-              <span>- سحب نقود للاستخدام الشخصي</span>
-            </button>
-
-            {onOpenSupplierTransactionModal && (
-              <>
-                <button
-                  onClick={() => onOpenSupplierTransactionModal(undefined, 'Bill')}
-                  className="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-xs font-semibold text-rose-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <ArrowDownLeft className="w-3.5 h-3.5" />
-                  <span>+ Supplier Goods Bill</span>
-                </button>
-                <button
-                  onClick={() => onOpenSupplierTransactionModal(undefined, 'Payment')}
-                  className="px-3 py-1.5 rounded-lg bg-teal-600/20 hover:bg-teal-600/30 border border-teal-500/40 text-xs font-semibold text-teal-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>+ Supplier Payment</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => onOpenTransactionModal('Packaging & Supplies')}
-              className="px-3 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/40 text-xs font-semibold text-purple-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Layers className="w-3.5 h-3.5" />
-              <span>+ Packaging Buy</span>
-            </button>
-
-            <button
-              onClick={() => onOpenTransactionModal('Shipping')}
-              className="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/30 border border-sky-500/40 text-xs font-semibold text-sky-300 flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Truck className="w-3.5 h-3.5" />
-              <span>+ Local Shipping Cost</span>
-            </button>
-
-            <button
-              onClick={() => onOpenTransactionModal('Vehicle')}
-              className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-semibold text-slate-200 flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Receipt className="w-3.5 h-3.5 text-amber-400" />
-              <span>+ Facility / Other</span>
-            </button>
           </div>
         </div>
 
         {/* Second Row: Search & Multi-Variable Filter Controls */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-3">
-          {/* Search Input */}
           <div className="lg:col-span-2 relative">
             <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search order #, invoice, tracking #, item, client, supplier..."
+              placeholder={tr(
+                'Search order #, invoice, tracking #, item, client, supplier...',
+                'ابحث برقم الطلبية، الفاتورة، رقم التتبع، الصنف، الزبون، أو المورد...'
+              )}
               className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
 
-          {/* Customer Filter */}
           <select
             value={customerFilter}
             onChange={(e) => setCustomerFilter(e.target.value)}
             className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
           >
-            <option value="ALL">All Customers</option>
+            <option value="ALL">{tr('All Customers', 'كل الزبائن')}</option>
             {customers.map((c) => (
               <option key={c.id} value={String(c.id)}>
                 {c.firstName} {c.lastName} ({c.city})
@@ -1212,13 +1216,12 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             ))}
           </select>
 
-          {/* Supplier Filter */}
           <select
             value={supplierFilter}
             onChange={(e) => setSupplierFilter(e.target.value)}
             className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
           >
-            <option value="ALL">All Goods Suppliers</option>
+            <option value="ALL">{tr('All Goods Suppliers', 'كل موردي البضاعة')}</option>
             {suppliers.map((s) => (
               <option key={s.id} value={String(s.id)}>
                 {s.name}
@@ -1226,13 +1229,12 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             ))}
           </select>
 
-          {/* Local Carrier Filter */}
           <select
             value={carrierFilter}
             onChange={(e) => setCarrierFilter(e.target.value)}
             className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
           >
-            <option value="ALL">All Local Carriers</option>
+            <option value="ALL">{tr('All Local Carriers', 'كل شركات الشحن')}</option>
             <option value="DHL">DHL Paket</option>
             <option value="DPD">DPD Standard</option>
             <option value="Hermes">Hermes</option>
@@ -1240,16 +1242,15 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             <option value="UPS">UPS Standard</option>
           </select>
 
-          {/* Order Status Filter */}
           <select
             value={orderStatusFilter}
             onChange={(e) => setOrderStatusFilter(e.target.value)}
             className="bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-rose-500"
           >
-            <option value="ALL">All Order Statuses</option>
+            <option value="ALL">{tr('All Order Statuses', 'كل حالات الطلبيات')}</option>
             {ORDER_STATUSES.map((st) => (
               <option key={st} value={st}>
-                Status: {st}
+                {tr('Status:', 'الحالة:')} {translateOrderStatus(st)}
               </option>
             ))}
           </select>
@@ -1259,7 +1260,8 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/60 text-xs">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-slate-400 flex items-center gap-1 mr-1">
-              <Filter className="w-3.5 h-3.5 text-rose-400" /> Date Filter:
+              <Filter className="w-3.5 h-3.5 text-rose-400" />{' '}
+              {tr('Date Filter:', 'فلتر التاريخ:')}
             </span>
             {(['ALL', '7D', '30D', '90D', 'CUSTOM'] as const).map((dp) => (
               <button
@@ -1271,7 +1273,11 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                     : 'bg-slate-900 text-slate-400 hover:text-white'
                 }`}
               >
-                {dp === 'ALL' ? 'All Dates' : dp}
+                {dp === 'ALL'
+                  ? tr('All Dates', 'كل التواريخ')
+                  : dp === 'CUSTOM'
+                  ? tr('Custom Range', 'فترة مخصصة')
+                  : dp}
               </button>
             ))}
 
@@ -1283,7 +1289,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                   onChange={(e) => setStartDate(e.target.value)}
                   className="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs text-white font-mono"
                 />
-                <span className="text-slate-500">to</span>
+                <span className="text-slate-500">{tr('to', 'إلى')}</span>
                 <input
                   type="date"
                   value={endDate}
@@ -1300,7 +1306,7 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-white bg-slate-900 border border-slate-800 cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset Filters</span>
+              <span>{tr('Reset Filters', 'إعادة ضبط الفلاتر')}</span>
             </button>
 
             <button
@@ -1308,24 +1314,30 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>Export CSV</span>
+              <span>{tr('Export CSV', 'تصدير CSV')}</span>
             </button>
           </div>
         </div>
       </div>
 
       {/* ================================================================= */}
-      {/* 4. MASTER OPERATIONS LEDGER TABLE (DYNAMIC EDIT / STATUS / DELETE)*/}
+      {/* 4. MASTER OPERATIONS LEDGER TABLE                                 */}
       {/* ================================================================= */}
       <div className="rounded-xl bg-[#141820] border border-slate-800 shadow-xs overflow-hidden">
         {filteredOperations.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <Receipt className="w-8 h-8 text-slate-600 mx-auto" />
             <div className="text-sm font-medium text-slate-300">
-              No operations match your active filters
+              {tr(
+                'No operations match your active filters',
+                'لا توجد عمليات مطابقة للفلاتر المحددة'
+              )}
             </div>
             <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Use the quick add buttons above to record a customer order, supplier goods bill, packaging purchase, or local shipping voucher.
+              {tr(
+                'Use the quick add buttons above to record a customer order, supplier goods bill, packaging purchase, or local shipping voucher.',
+                'استخدم أزرار الإضافة السريعة بالأعلى لتسجيل طلبية زبون، فاتورة مورد، شراء مواد تغليف، أو حركة مال خاص.'
+              )}
             </p>
           </div>
         ) : (
@@ -1333,13 +1345,23 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-900/60 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="py-3.5 px-4">Date</th>
-                  <th className="py-3.5 px-4">Operation Type / Status</th>
-                  <th className="py-3.5 px-4">Description & Details</th>
-                  <th className="py-3.5 px-4">Customer / Supplier</th>
-                  <th className="py-3.5 px-4">Ref / Local Tracking</th>
-                  <th className="py-3.5 px-4 text-right">Amount (€)</th>
-                  <th className="py-3.5 px-4 text-right">Edit / Delete</th>
+                  <th className="py-3.5 px-4">{tr('Date', 'التاريخ')}</th>
+                  <th className="py-3.5 px-4">
+                    {tr('Operation Type / Status', 'نوع العملية / الحالة')}
+                  </th>
+                  <th className="py-3.5 px-4">
+                    {tr('Description & Details', 'البيان والتفاصيل')}
+                  </th>
+                  <th className="py-3.5 px-4">
+                    {tr('Customer / Supplier', 'الزبون / المورد / الحساب')}
+                  </th>
+                  <th className="py-3.5 px-4">
+                    {tr('Ref / Local Tracking', 'المرجع / رقم التتبع')}
+                  </th>
+                  <th className="py-3.5 px-4 text-right">{tr('Amount (€)', 'المبلغ (€)')}</th>
+                  <th className="py-3.5 px-4 text-right">
+                    {tr('Edit / Delete', 'تعديل / حذف')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-xs">
@@ -1348,17 +1370,15 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                     key={item.uid}
                     className="hover:bg-slate-800/35 transition-colors group"
                   >
-                    {/* Date */}
                     <td className="py-3.5 px-4 font-mono text-slate-300 whitespace-nowrap">
                       {item.date}
                     </td>
 
-                    {/* Operation Type Badge + Inline Order Status Selector if Order */}
                     <td className="py-3.5 px-4 whitespace-nowrap">
                       {item.source === 'order' && item.orderObj && onUpdateOrderStatus ? (
                         <div className="flex items-center gap-1.5">
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                            Order
+                            {tr('Order', 'طلبية')}
                           </span>
                           <select
                             value={item.orderObj.status}
@@ -1370,11 +1390,11 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                               )
                             }
                             className="bg-slate-900 border border-slate-700 rounded px-2 py-0.5 text-[11px] font-semibold text-white focus:outline-none cursor-pointer"
-                            title="Change Order Status directly"
+                            title={tr('Change Order Status directly', 'تغيير حالة الطلبية مباشرة')}
                           >
                             {ORDER_STATUSES.map((st) => (
                               <option key={st} value={st}>
-                                {st}
+                                {translateOrderStatus(st)}
                               </option>
                             ))}
                           </select>
@@ -1388,7 +1408,6 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                       )}
                     </td>
 
-                    {/* Description & Subtitle */}
                     <td className="py-3.5 px-4">
                       <div className="font-medium text-slate-200">{item.title}</div>
                       <div className="text-[11px] text-slate-500 mt-0.5">
@@ -1396,36 +1415,29 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                       </div>
                     </td>
 
-                    {/* Party (Customer or Supplier) */}
                     <td className="py-3.5 px-4 text-slate-300 font-medium">
                       {item.partyName}
                     </td>
 
-                    {/* Reference / Tracking */}
                     <td className="py-3.5 px-4 font-mono text-slate-400 whitespace-nowrap">
                       {item.reference}
                     </td>
 
-                    {/* Amount */}
                     <td
-                      className={`py-3.5 px-4 text-right font-mono font-bold tabular-nums text-sm whitespace-nowrap ${
+                      className={`py-3.5 px-4 text-right font-mono font-bold tabular-nums whitespace-nowrap ${
                         item.isPositive ? 'text-emerald-400' : 'text-rose-400'
                       }`}
                     >
-                      {item.isPositive ? '+' : '-'}€
-                      {item.amount.toLocaleString(undefined, {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
+                      {item.isPositive ? '+' : '-'}€{item.amount.toFixed(2)}
                     </td>
 
-                    {/* Actions: Context-Aware Edit & Delete */}
                     <td className="py-3.5 px-4 text-right whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {item.source === 'order' &&
                           item.orderObj &&
                           onOpenReceivePaymentModal &&
-                          getOrderPaymentInfo(item.orderObj).remaining > 0.01 && (
+                          getOrderPaymentInfo(item.orderObj).remaining > 0.01 &&
+                          item.orderObj.status !== 'Cancelled' && (
                             <button
                               onClick={() =>
                                 onOpenReceivePaymentModal(
@@ -1433,23 +1445,32 @@ export const FinancesView: React.FC<FinancesViewProps> = ({
                                   item.orderObj!.id
                                 )
                               }
-                              title="Receive payment from customer for this order"
-                              className="px-2 py-1 rounded bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                              title={tr(
+                                'Receive payment for this order',
+                                'استلام دفعة لتسديد هذه الطلبية'
+                              )}
+                              className="px-2 py-1 text-[10px] font-bold text-emerald-300 bg-emerald-600/20 hover:bg-emerald-600/35 border border-emerald-500/40 rounded-md transition-colors flex items-center gap-1 cursor-pointer"
                             >
                               <Wallet className="w-3 h-3" />
-                              <span>Pay</span>
+                              <span>{tr('Pay', 'تسديد')}</span>
                             </button>
                           )}
+
                         <button
                           onClick={() => handleEditOperation(item)}
-                          title="Edit this operation (adapts fields to entry type)"
-                          className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
+                          title={tr(
+                            'Edit this operation & its type-specific data',
+                            'تعديل هذه العملية وبياناتها'
+                          )}
+                          className="px-2 py-1 text-slate-300 hover:text-white rounded-md bg-slate-800/80 hover:bg-slate-700 border border-slate-700/80 transition-colors flex items-center gap-1 cursor-pointer"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3 h-3 text-sky-400" />
+                          <span className="text-[11px]">{tr('Edit', 'تعديل')}</span>
                         </button>
+
                         <button
                           onClick={() => handleDeleteOperation(item)}
-                          title="Delete this operation"
+                          title={tr('Delete operation', 'حذف العملية')}
                           className="p-1.5 text-slate-500 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

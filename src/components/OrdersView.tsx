@@ -26,6 +26,7 @@ import type {
 } from '../types';
 import { ShipOrderModal } from './ShipOrderModal';
 import { getOrderPaymentInfo } from '../utils/financialTheme';
+import { useI18n } from '../utils/i18n';
 
 interface OrdersViewProps {
   orders: CustomerOrder[];
@@ -61,6 +62,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
   onDeleteOrder,
   onAddToPrintQueue,
 }) => {
+  const { tr, translateOrderStatus } = useI18n();
   const [chartRange, setChartRange] = useState<'30D' | '90D' | 'ALL'>('30D');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<
@@ -312,17 +314,20 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <Package className="w-4 h-4 text-sky-400" />
-              Total Orders Value
+              {tr('Total Orders Value', 'إجمالي قيمة الطلبيات')}
             </span>
             <span className="text-[11px] font-mono text-slate-300">
-              {stats.totalOrders} Orders
+              {stats.totalOrders} {tr('Orders', 'طلبية')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-white">
             €{stats.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Total value of all executed customer orders
+            {tr(
+              'Total value of all executed customer orders',
+              'إجمالي قيمة جميع طلبيات الزبائن المنفذة'
+            )}
           </p>
         </div>
 
@@ -330,17 +335,20 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-emerald-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4" />
-              Paid & Collected
+              {tr('Paid & Collected', 'المدفوع والمحصّل')}
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-              Cash Received
+              {tr('Cash Received', 'نقد مستلم')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-emerald-400">
             €{stats.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Payments received upfront or via customer balance settlements
+            {tr(
+              'Payments received upfront or via customer balance settlements',
+              'الدفعات المستلمة فوراً أو عبر تسديد أرصدة الزبائن'
+            )}
           </p>
         </div>
 
@@ -348,17 +356,20 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-rose-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <AlertCircle className="w-4 h-4" />
-              Unpaid Customer Balance
+              {tr('Unpaid Customer Balance', 'الرصيد المتبقي (غير مدفوع)')}
             </span>
             <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-rose-500/15 text-rose-300 border border-rose-500/30">
-              {stats.unpaidOrPartialCount} Unsettled
+              {stats.unpaidOrPartialCount} {tr('Unsettled', 'غير مسدد')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-rose-400">
             €{stats.totalUnpaidReceivables.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <p className="text-[11px] text-slate-400 mt-1.5">
-            Orders executed on credit awaiting customer payment
+            {tr(
+              'Orders executed on credit awaiting customer payment',
+              'طلبيات منفذة بدون دفع فوري بانتظار تسديد الزبون'
+            )}
           </p>
         </div>
 
@@ -366,15 +377,17 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
           <div className="flex items-center justify-between text-xs text-slate-400 font-semibold mb-2">
             <span className="flex items-center gap-1.5">
               <Truck className="w-4 h-4 text-sky-400" />
-              Dispatch & Fulfillment
+              {tr('Dispatch & Fulfillment', 'الشحن والتنفيذ')}
             </span>
             <span className="text-[11px] font-mono text-amber-400 font-bold">
-              {stats.pendingCount} Pending
+              {stats.pendingCount} {tr('Pending', 'قيد التجهيز')}
             </span>
           </div>
           <div className="text-2xl font-bold font-mono text-sky-400">
             {stats.shippedCount + stats.deliveredCount}{' '}
-            <span className="text-sm font-normal text-slate-400">Shipped</span>
+            <span className="text-sm font-normal text-slate-400">
+              {tr('Shipped', 'مشحونة')}
+            </span>
           </div>
           <div className="w-full h-1.5 bg-slate-800 rounded-full mt-2 overflow-hidden">
             <div
@@ -392,11 +405,17 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-sky-400" />
               <h3 className="text-sm font-semibold text-white">
-                Customer Orders Billed vs. Paid Amount Trend Line
+                {tr(
+                  'Customer Orders Billed vs. Paid Amount Trend Line',
+                  'الخط البياني لقيمة الطلبيات المنفذة مقابل الدفعات المستلمة'
+                )}
               </h3>
             </div>
             <p className="text-xs text-slate-400 mt-0.5">
-              Total order volume (€) vs collected customer payments (€) across order dates
+              {tr(
+                'Total order volume (€) vs collected customer payments (€) across order dates',
+                'إجمالي حجم الطلبيات (€) مقارنة بالدفعات المحصلة (€) عبر التواريخ'
+              )}
             </p>
           </div>
           <div className="flex items-center gap-1 p-1 bg-slate-900 rounded-lg border border-slate-800 text-xs">
@@ -512,18 +531,19 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-sky-500 rounded-full" />
               <span className="text-slate-300">
-                Total Orders Billed (€{stats.totalValue.toFixed(2)})
+                {tr('Total Orders Billed', 'إجمالي قيمة الطلبيات')} (€{stats.totalValue.toFixed(2)})
               </span>
             </span>
             <span className="flex items-center gap-2">
               <span className="w-3 h-0.5 bg-emerald-500 rounded-full border-t border-dashed" />
               <span className="text-slate-300">
-                Paid Amount (€{stats.totalPaid.toFixed(2)})
+                {tr('Paid Amount', 'المبالغ المسددة')} (€{stats.totalPaid.toFixed(2)})
               </span>
             </span>
           </div>
           <span className="font-mono text-sky-400 font-semibold">
-            Showing {filteredOrders.length} of {orders.length} Orders
+            {tr('Showing', 'عرض')} {filteredOrders.length} {tr('of', 'من')} {orders.length}{' '}
+            {tr('Orders', 'طلبيات')}
           </span>
         </div>
       </div>
@@ -537,7 +557,10 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by order #, customer name, local carrier tracking #, or item..."
+              placeholder={tr(
+                'Search by order #, customer name, local carrier tracking #, or item...',
+                'ابحث برقم الطلبية، اسم الزبون، رقم التتبع، أو البضاعة...'
+              )}
               className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700/80 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
             />
           </div>
@@ -549,7 +572,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 className="px-3.5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
               >
                 <Wallet className="w-3.5 h-3.5" />
-                <span>+ Receive Customer Payment</span>
+                <span>{tr('+ Receive Customer Payment', '+ تلقي دفعة من زبون')}</span>
               </button>
             )}
 
@@ -558,7 +581,12 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs whitespace-nowrap"
             >
               <PlusCircle className="w-3.5 h-3.5" />
-              <span>+ New Customer Order (Paid or Unpaid)</span>
+              <span>
+                {tr(
+                  '+ New Customer Order (Paid or Unpaid)',
+                  '+ طلبية زبون جديدة (مدفوعة أو آجلة)'
+                )}
+              </span>
             </button>
           </div>
         </div>
@@ -567,7 +595,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-800/80 text-xs">
           {/* Status & Payment Tabs */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-slate-400 font-medium mr-1 text-[11px]">Dispatch:</span>
+            <span className="text-slate-400 font-medium mr-1 text-[11px]">
+              {tr('Dispatch:', 'الشحن:')}
+            </span>
             <button
               onClick={() => setStatusFilter('ALL')}
               className={`px-2.5 py-1 rounded-md font-medium transition-colors cursor-pointer ${
@@ -576,7 +606,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              All ({orders.length})
+              {tr('All', 'الكل')} ({orders.length})
             </button>
             <button
               onClick={() => setStatusFilter('PENDING')}
@@ -586,7 +616,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Pending ({stats.pendingCount})
+              {tr('Pending', 'قيد التجهيز')} ({stats.pendingCount})
             </button>
             <button
               onClick={() => setStatusFilter('SHIPPED')}
@@ -596,11 +626,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Shipped ({stats.shippedCount})
+              {tr('Shipped', 'تم الشحن')} ({stats.shippedCount})
             </button>
 
             <span className="text-slate-600 mx-1">|</span>
-            <span className="text-slate-400 font-medium mr-1 text-[11px]">Payment:</span>
+            <span className="text-slate-400 font-medium mr-1 text-[11px]">
+              {tr('Payment:', 'الدفع:')}
+            </span>
             <button
               onClick={() =>
                 setPaymentFilter(
@@ -614,7 +646,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               }`}
             >
               <AlertCircle className="w-3 h-3" />
-              <span>Unpaid / Balance Due ({stats.unpaidOrPartialCount})</span>
+              <span>
+                {tr('Unpaid / Balance Due', 'غير مدفوعة / عليها رصيد')} ({stats.unpaidOrPartialCount})
+              </span>
             </button>
             <button
               onClick={() => setPaymentFilter(paymentFilter === 'PAID' ? 'ALL' : 'PAID')}
@@ -624,7 +658,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                   : 'bg-slate-900 text-slate-400 hover:text-slate-200'
               }`}
             >
-              Paid
+              {tr('Paid', 'مدفوعة')}
             </button>
           </div>
 
@@ -635,7 +669,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onChange={(e) => setCustomerFilter(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none"
             >
-              <option value="ALL">All Customers</option>
+              <option value="ALL">{tr('All Customers', 'جميع الزبائن')}</option>
               {customers.map((c) => (
                 <option key={c.id} value={String(c.id)}>
                   {c.firstName} {c.lastName}
@@ -648,27 +682,27 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
               onChange={(e) => setCarrierFilter(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1 text-xs text-white focus:outline-none"
             >
-              <option value="ALL">All Local Carriers</option>
+              <option value="ALL">{tr('All Local Carriers', 'جميع شركات الشحن')}</option>
               <option value="DHL">DHL Paket</option>
               <option value="DPD">DPD Standard</option>
               <option value="Hermes">Hermes</option>
               <option value="GLS">GLS</option>
               <option value="UPS">UPS Standard</option>
-              <option value="Other">Other</option>
+              <option value="Other">{tr('Other', 'أخرى')}</option>
             </select>
 
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              title="From Date"
+              title={tr('From Date', 'من تاريخ')}
               className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white font-mono"
             />
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              title="To Date"
+              title={tr('To Date', 'إلى تاريخ')}
               className="bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-xs text-white font-mono"
             />
 
@@ -691,7 +725,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                 }}
                 className="text-slate-400 hover:text-white flex items-center gap-1 px-2 py-1 cursor-pointer"
               >
-                <RotateCcw className="w-3 h-3" /> Reset
+                <RotateCcw className="w-3 h-3" /> {tr('Reset', 'إعادة ضبط')}
               </button>
             )}
           </div>
@@ -702,31 +736,50 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
       {filteredOrders.length === 0 ? (
         <div className="p-12 text-center rounded-xl bg-[#141820] border border-slate-800 text-slate-400 space-y-3">
           <Package className="w-10 h-10 text-slate-600 mx-auto" />
-          <h3 className="text-sm font-semibold text-slate-200">No Orders Found</h3>
+          <h3 className="text-sm font-semibold text-slate-200">
+            {tr('No Orders Found', 'لا توجد طلبيات')}
+          </h3>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            Create customer orders with immediate payment or on credit (unpaid), assign local carrier tracking numbers, and settle customer balances anytime.
+            {tr(
+              'Create customer orders with immediate payment or on credit (unpaid), assign local carrier tracking numbers, and settle customer balances anytime.',
+              'أنشئ طلبيات للزبائن بدفع فوري أو على الحساب (بدون دفع فوري)، وأضف أرقام تتبع الشحن المحلي، وسدد ذمم الزبائن في أي وقت.'
+            )}
           </p>
           <button
             onClick={() => onOpenOrderModal()}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition-colors cursor-pointer shadow-xs"
           >
             <PlusCircle className="w-4 h-4" />
-            <span>Create First Order</span>
+            <span>{tr('Create First Order', 'إنشاء أول طلبية')}</span>
           </button>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-xl border border-slate-800 bg-[#141820]">
-          <table className="w-full text-left text-xs border-collapse">
+          <table className="w-full text-start text-xs border-collapse">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-900/80 text-slate-400 font-semibold">
-                <th className="py-3.5 px-4">Order # & Date</th>
-                <th className="py-3.5 px-4">Customer Account</th>
-                <th className="py-3.5 px-4">Goods & Items</th>
-                <th className="py-3.5 px-4 text-right">Order Value</th>
-                <th className="py-3.5 px-4 text-center">Payment Status & Balance</th>
-                <th className="py-3.5 px-4 text-center">Dispatch Status</th>
-                <th className="py-3.5 px-4">Local Carrier & Tracking #</th>
-                <th className="py-3.5 px-4 text-right">Actions</th>
+                <th className="py-3.5 px-4 text-start">
+                  {tr('Order # & Date', 'رقم الطلبية والتاريخ')}
+                </th>
+                <th className="py-3.5 px-4 text-start">
+                  {tr('Customer Account', 'حساب الزبون')}
+                </th>
+                <th className="py-3.5 px-4 text-start">
+                  {tr('Goods & Items', 'البضاعة والأصناف')}
+                </th>
+                <th className="py-3.5 px-4 text-end">
+                  {tr('Order Value', 'قيمة الطلبية')}
+                </th>
+                <th className="py-3.5 px-4 text-center">
+                  {tr('Payment Status & Balance', 'حالة الدفع والرصيد')}
+                </th>
+                <th className="py-3.5 px-4 text-center">
+                  {tr('Dispatch Status', 'حالة الشحن')}
+                </th>
+                <th className="py-3.5 px-4 text-start">
+                  {tr('Local Carrier & Tracking #', 'شركة الشحن ورقم التتبع')}
+                </th>
+                <th className="py-3.5 px-4 text-end">{tr('Actions', 'إجراءات')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/80">
@@ -783,13 +836,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                           className="text-[10px] text-slate-500 truncate max-w-xs mt-0.5"
                           title={order.notes}
                         >
-                          Note: {order.notes}
+                          {tr('Note:', 'ملاحظة:')} {order.notes}
                         </div>
                       )}
                     </td>
 
                     {/* Value */}
-                    <td className="py-3.5 px-4 text-right font-mono font-bold text-white whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-end font-mono font-bold text-white whitespace-nowrap">
                       €
                       {payInfo.total.toLocaleString(undefined, {
                         minimumFractionDigits: 2,
@@ -802,16 +855,16 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                       <div className="flex flex-col items-center gap-1">
                         {payInfo.paymentStatus === 'Paid' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                            <CheckCircle2 className="w-3 h-3" /> Paid (€{payInfo.paid.toFixed(2)})
+                            <CheckCircle2 className="w-3 h-3" /> {tr('Paid', 'مدفوعة')} (€{payInfo.paid.toFixed(2)})
                           </span>
                         ) : payInfo.paymentStatus === 'Partially Paid' ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                            <Clock className="w-3 h-3" /> Partial · Due: €
+                            <Clock className="w-3 h-3" /> {tr('Partial · Due:', 'جزئي · متبقٍ:')} €
                             {payInfo.remaining.toFixed(2)}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-300 border border-rose-500/30">
-                            <AlertCircle className="w-3 h-3" /> Unpaid · Due: €
+                            <AlertCircle className="w-3 h-3" /> {tr('Unpaid · Due:', 'غير مدفوعة · متبقٍ:')} €
                             {payInfo.remaining.toFixed(2)}
                           </span>
                         )}
@@ -822,10 +875,13 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                               onOpenReceivePaymentModal(order.customerId, order.id)
                             }
                             className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/40 text-[10px] font-semibold transition-colors cursor-pointer"
-                            title="Receive payment from customer for this order"
+                            title={tr(
+                              'Receive payment from customer for this order',
+                              'تلقي دفعة من الزبون لهذه الطلبية'
+                            )}
                           >
                             <Wallet className="w-2.5 h-2.5" />
-                            <span>+ Receive Payment</span>
+                            <span>{tr('+ Receive Payment', '+ تلقي دفعة')}</span>
                           </button>
                         )}
                       </div>
@@ -853,7 +909,7 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                       >
                         {ALL_STATUSES.map((st) => (
                           <option key={st} value={st} className="bg-slate-900 text-white">
-                            {st}
+                            {translateOrderStatus(st)}
                           </option>
                         ))}
                       </select>
@@ -877,15 +933,15 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                                 handleCopyTracking(order.trackingNumber!, `track-${order.id}`)
                               }
                               className="text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer transition-colors"
-                              title="Copy tracking code"
+                              title={tr('Copy tracking code', 'نسخ رقم التتبع')}
                             >
                               {copiedId === `track-${order.id}` ? (
                                 <span className="text-emerald-400 flex items-center gap-0.5">
-                                  <Check className="w-3 h-3" /> Copied
+                                  <Check className="w-3 h-3" /> {tr('Copied', 'تم النسخ')}
                                 </span>
                               ) : (
                                 <span className="flex items-center gap-0.5">
-                                  <Copy className="w-3 h-3" /> Copy
+                                  <Copy className="w-3 h-3" /> {tr('Copy', 'نسخ')}
                                 </span>
                               )}
                             </button>
@@ -895,9 +951,9 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                               target="_blank"
                               rel="noopener noreferrer"
                               className="text-sky-400 hover:text-sky-300 flex items-center gap-0.5 transition-colors"
-                              title="Trace on Local Carrier Portal"
+                              title={tr('Trace on Local Carrier Portal', 'تتبع عبر موقع شركة الشحن')}
                             >
-                              <span>Trace</span>
+                              <span>{tr('Trace', 'تتبع')}</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           </div>
@@ -908,28 +964,34 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-medium transition-colors cursor-pointer"
                         >
                           <Truck className="w-3 h-3 text-amber-400" />
-                          <span>+ Add Tracking & Ship</span>
+                          <span>{tr('+ Add Tracking & Ship', '+ إضافة رقم تتبع وشحن')}</span>
                         </button>
                       )}
                     </td>
 
                     {/* Actions */}
-                    <td className="py-3.5 px-4 text-right whitespace-nowrap">
+                    <td className="py-3.5 px-4 text-end whitespace-nowrap">
                       <div className="flex items-center justify-end gap-1.5">
                         {!isShipped && !isDelivered && (
                           <button
                             onClick={() => setActiveShipModalOrder(order)}
-                            title="Mark as Shipped with Local Tracking Number"
+                            title={tr(
+                              'Mark as Shipped with Local Tracking Number',
+                              'تأكيد الشحن وإضافة رقم تتبع محلي'
+                            )}
                             className="px-2.5 py-1 rounded bg-sky-600/20 hover:bg-sky-600/30 text-sky-300 border border-sky-500/40 text-[11px] font-bold transition-colors cursor-pointer"
                           >
-                            Ship
+                            {tr('Ship', 'شحن')}
                           </button>
                         )}
 
                         {customer && (
                           <button
                             onClick={() => onAddToPrintQueue(customer)}
-                            title="Add Customer Shipping Label to A4 Print Queue"
+                            title={tr(
+                              'Add Customer Shipping Label to A4 Print Queue',
+                              'إضافة بوليصة عنوان الزبون لطابور الطباعة A4'
+                            )}
                             className="p-1.5 text-slate-400 hover:text-amber-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                           >
                             <Printer className="w-3.5 h-3.5" />
@@ -938,7 +1000,10 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
 
                         <button
                           onClick={() => onOpenOrderModal(order)}
-                          title="Edit order, payment status & details"
+                          title={tr(
+                            'Edit order, payment status & details',
+                            'تعديل الطلبية وحالة الدفع والتفاصيل'
+                          )}
                           className="p-1.5 text-slate-400 hover:text-white rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -948,12 +1013,17 @@ export const OrdersView: React.FC<OrdersViewProps> = ({
                           onClick={() => {
                             if (
                               order.id &&
-                              window.confirm(`Delete order "${order.orderNumber}"?`)
+                              window.confirm(
+                                tr(
+                                  `Delete order "${order.orderNumber}"?`,
+                                  `هل أنت متأكد من حذف الطلبية "${order.orderNumber}"؟`
+                                )
+                              )
                             ) {
                               onDeleteOrder(order.id);
                             }
                           }}
-                          title="Delete order"
+                          title={tr('Delete order', 'حذف الطلبية')}
                           className="p-1.5 text-slate-400 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

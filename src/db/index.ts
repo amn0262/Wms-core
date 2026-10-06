@@ -53,6 +53,7 @@ export const DEFAULT_SENDER_SETTINGS: SenderSettings = {
   companyVat: 'DE382910482',
   showCountryField: false,
   enableDynamicTheme: true,
+  language: 'ar',
 };
 
 export async function getSenderSettings(): Promise<SenderSettings> {

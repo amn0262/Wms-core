@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import type { Customer, PrintQueueItem, SenderSettings } from '../types';
 import { generateA4ShippingLabels } from '../utils/pdfGenerator';
+import { useI18n } from '../utils/i18n';
 
 interface PrintQueueViewProps {
   queue: PrintQueueItem[];
@@ -33,6 +34,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
   onUpdateQueue,
   onClearQueue,
 }) => {
+  const { tr } = useI18n();
   const [selectedCustomerToAdd, setSelectedCustomerToAdd] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [showSheetPreview, setShowSheetPreview] = useState(false);
@@ -108,7 +110,12 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 4000);
-    setSaveSuccessMsg('PDF-Datei erfolgreich im Download-Ordner gespeichert!');
+    setSaveSuccessMsg(
+      tr(
+        'PDF file successfully saved to Downloads folder!',
+        'تم حفظ ملف PDF بنجاح في مجلد التنزيلات!'
+      )
+    );
     setTimeout(() => setSaveSuccessMsg(null), 4000);
   };
 
@@ -126,7 +133,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
             suggestedName: finalName,
             types: [
               {
-                description: 'PDF Versandetiketten (*.pdf)',
+                description: 'PDF Shipping Labels (*.pdf)',
                 accept: { 'application/pdf': ['.pdf'] },
               },
             ],
@@ -134,7 +141,12 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
           const writable = await handle.createWritable();
           await writable.write(blob);
           await writable.close();
-          setSaveSuccessMsg('Etiketten erfolgreich im gewählten Verzeichnis gespeichert!');
+          setSaveSuccessMsg(
+            tr(
+              'Labels successfully saved to chosen folder!',
+              'تم حفظ الملصقات بنجاح في المجلد المختار!'
+            )
+          );
           setTimeout(() => setSaveSuccessMsg(null), 4000);
         } catch (err: any) {
           if (err.name !== 'AbortError') {
@@ -147,7 +159,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       }
     } catch (err) {
       console.error('Error generating PDF:', err);
-      alert('Fehler beim Erstellen der PDF-Etiketten.');
+      alert(tr('Error creating PDF labels.', 'حدث خطأ أثناء إنشاء ملف الملصقات PDF.'));
     } finally {
       setIsGenerating(false);
     }
@@ -162,7 +174,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       triggerPdfDownload(blob, finalName);
     } catch (err) {
       console.error('Error generating PDF:', err);
-      alert('Fehler beim Erstellen der PDF-Etiketten.');
+      alert(tr('Error creating PDF labels.', 'حدث خطأ أثناء إنشاء ملف الملصقات PDF.'));
     }
   };
 
@@ -173,11 +185,16 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       const { blob } = generateA4ShippingLabels(queue, senderSettings);
       const url = URL.createObjectURL(blob);
       window.open(url, '_blank');
-      setSaveSuccessMsg('PDF im neuen Tab geöffnet. Bereit zum Drucken.');
+      setSaveSuccessMsg(
+        tr(
+          'PDF opened in new tab. Ready to print.',
+          'تم فتح ملف PDF في نافذة جديدة. جاهز للطباعة.'
+        )
+      );
       setTimeout(() => setSaveSuccessMsg(null), 4000);
     } catch (err) {
       console.error('Error opening PDF:', err);
-      alert('Fehler beim Öffnen der PDF-Etiketten.');
+      alert(tr('Error opening PDF labels.', 'حدث خطأ أثناء فتح ملف الملصقات PDF.'));
     }
   };
 
@@ -192,11 +209,16 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
         const file = new File([blob], finalName, { type: 'application/pdf' });
         await navigator.share({
           title: 'Versandetiketten PDF',
-          text: `WMS Versandetiketten (${totalLabels} Etiketten auf ${totalPages} Seiten)`,
+          text: `WMS Shipping Labels (${totalLabels} labels on ${totalPages} pages)`,
           files: [file],
         });
       } else {
-        alert('Die Teilen-Funktion wird in diesem Browser nicht unterstützt. Bitte "Speichern unter" nutzen.');
+        alert(
+          tr(
+            'Share function is not supported in this browser. Please use "Save As".',
+            'خاصية المشاركة غير مدعومة في هذا المتصفح. يرجى استخدام "حفظ باسم".'
+          )
+        );
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -212,14 +234,21 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <span className="text-base font-semibold text-white">
-              Versandetiketten Druckwarteschlange (6 Etiketten / A4-Bogen)
+              {tr(
+                'Shipping Labels Print Queue (6 Labels / A4 Sheet)',
+                'طابور طباعة ملصقات الشحن (6 ملصقات لكل ورقة A4)'
+              )}
             </span>
             <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-500/10 text-rose-400 font-mono font-bold border border-rose-500/20">
-              {totalLabels} Etiketten ({totalPages} DIN A4 {totalPages === 1 ? 'Seite' : 'Seiten'})
+              {totalLabels} {tr('Labels', 'ملصق')} ({totalPages} DIN A4{' '}
+              {totalPages === 1 ? tr('Page', 'صفحة') : tr('Pages', 'صفحات')})
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            2 Spalten × 3 Zeilen (105mm × 99mm): Nur Absender und Empfänger in deutscher Sprache ohne Länderangabe oder Zusatzdaten.
+            {tr(
+              '2 Columns × 3 Rows (105mm × 99mm): Official German address format (Absender & Empfänger) ready for parcel dispatch.',
+              'عمودان × 3 صفوف (105×99 مم): تنسيق العناوين الألماني الرسمي (المرسل والمستلم) جاهز للصق على الطرود.'
+            )}
           </p>
         </div>
 
@@ -231,14 +260,14 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors shadow-xs cursor-pointer"
               >
                 <Eye className="w-3.5 h-3.5 text-sky-400" />
-                <span>Bogen-Vorschau</span>
+                <span>{tr('Sheet Preview', 'معاينة ورقة A4')}</span>
               </button>
 
               <button
                 onClick={onClearQueue}
                 className="px-3 py-2 rounded-lg text-xs font-medium text-slate-400 hover:text-rose-400 hover:bg-slate-800/80 transition-colors cursor-pointer"
               >
-                Warteschlange leeren
+                {tr('Clear Queue', 'إفراغ الطابور')}
               </button>
             </>
           )}
@@ -247,7 +276,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
             onClick={handleAddAllCustomers}
             className="px-3.5 py-2 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors shadow-xs cursor-pointer"
           >
-            + Alle Kunden hinzufügen
+            {tr('+ Add All Customers', '+ إضافة جميع الزبائن')}
           </button>
 
           {/* Trigger button opening the save options dialog */}
@@ -257,7 +286,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
             className="inline-flex items-center gap-2 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
           >
             <Printer className="w-4 h-4" />
-            <span>6er Etiketten drucken / speichern...</span>
+            <span>{tr('Print / Save 6-Up Labels...', 'طباعة / حفظ الملصقات (6 في الصفحة)...')}</span>
           </button>
         </div>
       </div>
@@ -265,14 +294,14 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       {/* Add Recipient Selector */}
       <div className="p-4 rounded-xl bg-[#141820] border border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
         <label className="text-xs font-semibold text-slate-300 whitespace-nowrap">
-          Empfänger hinzufügen:
+          {tr('Add Recipient:', 'إضافة مستلم للطابور:')}
         </label>
         <select
           value={selectedCustomerToAdd}
           onChange={(e) => setSelectedCustomerToAdd(e.target.value)}
           className="flex-1 bg-slate-900 border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-500"
         >
-          <option value="">-- Kunden auswählen --</option>
+          <option value="">{tr('-- Select Customer --', '-- اختر زبوناً --')}</option>
           {customers.map((c) => (
             <option key={c.id} value={String(c.id)}>
               {c.firstName} {c.lastName} ({c.city})
@@ -284,7 +313,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
           disabled={!selectedCustomerToAdd}
           className="px-4 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 disabled:opacity-40 transition-colors whitespace-nowrap cursor-pointer"
         >
-          + Zur Warteschlange
+          {tr('+ Add to Queue', '+ أضف للطابور')}
         </button>
       </div>
 
@@ -295,9 +324,14 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
             <Package className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-300">Druckwarteschlange ist leer</h3>
+            <h3 className="text-sm font-semibold text-slate-300">
+              {tr('Print queue is empty', 'طابور الطباعة فارغ')}
+            </h3>
             <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1">
-              Wähle Kunden aus der Liste oder oben aus, um 6er A4-Versandetiketten zu erstellen.
+              {tr(
+                'Select customers from the list or above to generate 6-up A4 shipping labels.',
+                'اختر الزبائن من القائمة أو من الأعلى لإنشاء ملصقات شحن A4 (6 ملصقات في الصفحة).'
+              )}
             </p>
           </div>
         </div>
@@ -314,7 +348,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                 <button
                   onClick={() => handleRemoveItem(item.id)}
                   className="absolute top-3 right-3 p-1 text-slate-500 hover:text-rose-400 rounded-md hover:bg-slate-800 transition-colors cursor-pointer"
-                  title="Entfernen"
+                  title={tr('Remove', 'إزالة')}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -323,7 +357,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                   {/* Label Index Tag */}
                   <div className="flex items-center gap-2 mb-3">
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">
-                      Etikett #{index + 1}
+                      {tr('Label', 'ملصق')} #{index + 1}
                     </span>
                     <span className="text-[11px] text-slate-500">
                       DIN A4 (105×99 mm)
@@ -368,7 +402,9 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
 
                 {/* Footer with Quantity Stepper */}
                 <div className="pt-3 mt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                  <span className="text-slate-400 text-[11px]">Anzahl Etiketten:</span>
+                  <span className="text-slate-400 text-[11px]">
+                    {tr('Label Quantity:', 'عدد الملصقات:')}
+                  </span>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleUpdateQuantity(item.id, -1)}
@@ -397,10 +433,18 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
       <div className="p-5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-400 space-y-2">
         <div className="flex items-center gap-2 text-slate-200 font-semibold">
           <FileCheck className="w-4 h-4 text-emerald-400" />
-          <span>Spezifikation: 6er Versandetiketten (105mm × 99mm)</span>
+          <span>
+            {tr(
+              'Specification: 6-Up Shipping Labels (105mm × 99mm)',
+              'المواصفات: 6 ملصقات شحن في صفحة A4 (105×99 مم)'
+            )}
+          </span>
         </div>
         <p>
-          Die gesamte Fläche der DIN A4 Seite wird voll ausgenutzt (2 Spalten × 3 Zeilen). Die Etiketten enthalten ausschließlich die Daten von <strong>Absender</strong> und <strong>Empfänger</strong> in deutscher Sprache ohne Länderangaben oder zusätzliche Zierelemente.
+          {tr(
+            'The full DIN A4 page is utilized (2 columns × 3 rows). Labels are printed in official German postal format (Absender & Empfänger) for domestic parcel carriers.',
+            'يتم استغلال كامل مساحة صفحة DIN A4 (عمودان × 3 صفوف). تُطبع الملصقات بالتنسيق البريدي الألماني الرسمي (Absender و Empfänger) لشركات الشحن المحلية.'
+          )}
         </p>
       </div>
 
@@ -415,10 +459,13 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
               <div>
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                   <Printer className="w-4 h-4 text-rose-500" />
-                  <span>Save Shipping Labels PDF</span>
+                  <span>{tr('Save Shipping Labels PDF', 'حفظ وطباعة ملف ملصقات الشحن PDF')}</span>
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Choose how and where to save or print the generated A4 sheet
+                  {tr(
+                    'Choose how and where to save or print the generated A4 sheet',
+                    'اختر طريقة ومكان حفظ أو طباعة ورقة الملصقات A4'
+                  )}
                 </p>
               </div>
               <button
@@ -440,14 +487,17 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
 
               {/* Summary Pill Strip */}
               <div className="p-3 rounded-lg bg-slate-900/80 border border-slate-800 flex items-center justify-between text-xs font-mono text-slate-300">
-                <span>{totalLabels} Labels ({totalPages} DIN A4 {totalPages === 1 ? 'Page' : 'Pages'})</span>
+                <span>
+                  {totalLabels} {tr('Labels', 'ملصق')} ({totalPages} DIN A4{' '}
+                  {totalPages === 1 ? tr('Page', 'صفحة') : tr('Pages', 'صفحات')})
+                </span>
                 <span className="text-rose-400 font-semibold">105 × 99 mm Grid</span>
               </div>
 
               {/* Filename Input */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                  File Name
+                  {tr('File Name', 'اسم الملف')}
                 </label>
                 <div className="flex items-center">
                   <input
@@ -465,7 +515,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
               {/* Menu of Options */}
               <div className="space-y-2.5 pt-2 border-t border-slate-800/80">
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-2">
-                  Select Save Destination:
+                  {tr('Select Save Destination:', 'اختر وجهة الحفظ أو الطباعة:')}
                 </span>
 
                 {/* Option A: Native Save As (Choose Directory) */}
@@ -479,15 +529,18 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Save As... (Choose Destination Folder)
+                        {tr('Save As... (Choose Destination Folder)', 'حفظ باسم... (اختيار المجلد)')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Pick exact local folder, external drive, or network share
+                        {tr(
+                          'Pick exact local folder, external drive, or network share',
+                          'اختر مجلداً محدداً على جهازك أو قرصاً خارجياً'
+                        )}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
-                    Browse →
+                    {tr('Browse →', 'استعراض ←')}
                   </span>
                 </button>
 
@@ -502,15 +555,18 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Download to Downloads Folder
+                        {tr('Download to Downloads Folder', 'تنزيل مباشر إلى مجلد التنزيلات')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        Quick download directly to your default browser downloads path
+                        {tr(
+                          'Quick download directly to your default browser downloads path',
+                          'تنزيل سريع مباشرة إلى مسار التنزيلات الافتراضي في المتصفح'
+                        )}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                    Download ↓
+                    {tr('Download ↓', 'تنزيل ↓')}
                   </span>
                 </button>
 
@@ -525,15 +581,18 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-semibold text-white">
-                        Open in New Tab & Print
+                        {tr('Open in New Tab & Print', 'فتح في علامة تبويب جديدة والطباعة')}
                       </div>
                       <div className="text-[11px] text-slate-400">
-                        View rendered PDF and open system print dialog directly
+                        {tr(
+                          'View rendered PDF and open system print dialog directly',
+                          'عرض ملف PDF الجاهز وفتح نافذة الطباعة مباشرة'
+                        )}
                       </div>
                     </div>
                   </div>
                   <span className="text-xs font-semibold text-rose-400 group-hover:text-rose-300">
-                    Open ↗
+                    {tr('Open ↗', 'فتح ↗')}
                   </span>
                 </button>
 
@@ -549,15 +608,18 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-semibold text-white">
-                          Share File via System Menu
+                          {tr('Share File via System Menu', 'مشاركة الملف عبر النظام')}
                         </div>
                         <div className="text-[11px] text-slate-400">
-                          AirDrop, email attachment, or local device apps
+                          {tr(
+                            'AirDrop, email attachment, or local device apps',
+                            'إرسال عبر البريد أو تطبيقات الجهاز'
+                          )}
                         </div>
                       </div>
                     </div>
                     <span className="text-xs font-semibold text-slate-400 group-hover:text-white">
-                      Share
+                      {tr('Share', 'مشاركة')}
                     </span>
                   </button>
                 )}
@@ -571,7 +633,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                 onClick={() => setIsSavePdfModalOpen(false)}
                 className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 transition-colors cursor-pointer"
               >
-                Close
+                {tr('Close', 'إغلاق')}
               </button>
             </div>
           </div>
@@ -587,10 +649,17 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
             <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-semibold text-white">
-                  A4 Bogen-Vorschau (6 Etiketten pro Blatt)
+                  {tr(
+                    'A4 Sheet Preview (6 Labels per Sheet)',
+                    'معاينة ورقة A4 (6 ملصقات لكل ورقة)'
+                  )}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Seite 1 von {totalPages} · 2 Spalten × 3 Zeilen (105 mm × 99 mm pro Etikett)
+                  {tr('Page 1 of', 'صفحة 1 من')} {totalPages} ·{' '}
+                  {tr(
+                    '2 Columns × 3 Rows (105 mm × 99 mm per label)',
+                    'عمودان × 3 صفوف (105 مم × 99 مم لكل ملصق)'
+                  )}
                 </p>
               </div>
               <button
@@ -612,7 +681,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                         key={slotIdx}
                         className="border border-dashed border-slate-300 rounded p-3 flex items-center justify-center text-slate-400 text-[11px] italic"
                       >
-                        Position #{slotIdx + 1} (Leer)
+                        {tr('Position', 'موضع')} #{slotIdx + 1} ({tr('Empty', 'فارغ')})
                       </div>
                     );
                   }
@@ -656,7 +725,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
 
                       {/* Slot Indicator */}
                       <div className="text-right text-[7px] text-slate-400 font-mono">
-                        Feld {slotIdx + 1}/6
+                        {tr('Slot', 'خانة')} {slotIdx + 1}/6
                       </div>
                     </div>
                   );
@@ -666,14 +735,15 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
 
             <div className="px-6 py-4 border-t border-slate-800 flex items-center justify-between">
               <span className="text-xs text-slate-400">
-                Gesamt {totalLabels} Etiketten auf {totalPages} DIN A4 Seiten
+                {tr('Total', 'الإجمالي')} {totalLabels} {tr('labels on', 'ملصق على')}{' '}
+                {totalPages} {tr('DIN A4 pages', 'صفحات DIN A4')}
               </span>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setShowSheetPreview(false)}
                   className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 cursor-pointer"
                 >
-                  Schließen
+                  {tr('Close', 'إغلاق')}
                 </button>
                 <button
                   onClick={() => {
@@ -683,7 +753,7 @@ export const PrintQueueView: React.FC<PrintQueueViewProps> = ({
                   className="inline-flex items-center gap-1.5 px-5 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 shadow-sm cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
-                  <span>Speicheroptionen öffnen...</span>
+                  <span>{tr('Open Save Options...', 'فتح خيارات الحفظ والطباعة...')}</span>
                 </button>
               </div>
             </div>

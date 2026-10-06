@@ -8,6 +8,7 @@ import {
   Truck,
 } from 'lucide-react';
 import type { Customer, Transaction } from '../types';
+import { useI18n } from '../utils/i18n';
 
 export interface TickerItem {
   text: string;
@@ -30,6 +31,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
   transactions,
   tickerItems,
 }) => {
+  const { tr, translateCategory } = useI18n();
   const [currentTime, setCurrentTime] = useState('');
   const [tickCount, setTickCount] = useState(0);
 
@@ -204,7 +206,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
           </span>
-          <span className="text-white hidden sm:inline">LIVE FEED</span>
+          <span className="text-white hidden sm:inline">{tr('LIVE FEED', 'بث مباشر')}</span>
           <span className="text-slate-500 text-[11px] tabular-nums font-mono">
             {currentTime}
           </span>
@@ -240,7 +242,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
           <button
             onClick={handleExit}
             className="px-2.5 py-1 rounded bg-slate-800/90 hover:bg-rose-950/80 border border-slate-700 hover:border-rose-700 text-slate-400 hover:text-rose-300 text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer"
-            title="Exit Fullscreen (ESC)"
+            title={tr('Exit Fullscreen (ESC)', 'الخروج من وضع ملء الشاشة (ESC)')}
           >
             <span className="text-[10px] text-slate-500">ESC</span>
             <Minimize2 className="w-3.5 h-3.5" />
@@ -258,9 +260,9 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
             <div>
               <div className="flex items-center gap-2 text-xs font-mono text-slate-400 mb-1">
-                <span>INDEX: WMS/EUR REALTIME LEDGER</span>
+                <span>{tr('INDEX: WMS/EUR REALTIME LEDGER', 'المؤشر: سجل المستودع الفوري (EUR)')}</span>
                 <span className="text-slate-600">·</span>
-                <span className="text-emerald-400 font-bold">HIGH FREQUENCY</span>
+                <span className="text-emerald-400 font-bold">{tr('HIGH FREQUENCY', 'تحديث فوري')}</span>
               </div>
               <div className="flex items-baseline gap-3">
                 <span className="text-3xl md:text-4xl font-extrabold font-mono tracking-tight text-white tabular-nums">
@@ -271,7 +273,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
                   <span>+{marginPercent.toFixed(1)}%</span>
                 </span>
                 <span className="text-xs font-mono text-slate-500 hidden sm:inline">
-                  (LAST TICK DELTA: +€{((tickCount * 13) % 48).toFixed(2)})
+                  ({tr('LAST TICK DELTA', 'تغير آخر نبضة')}: +€{((tickCount * 13) % 48).toFixed(2)})
                 </span>
               </div>
             </div>
@@ -280,11 +282,11 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
             <div className="flex items-center gap-4 text-xs font-mono">
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-1 bg-emerald-500 rounded-full shadow-[0_0_8px_#10b981]" />
-                <span className="text-slate-300 font-semibold">REVENUE STREAM</span>
+                <span className="text-slate-300 font-semibold">{tr('REVENUE STREAM', 'تدفق الإيرادات')}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-3 h-1 bg-rose-500 rounded-full shadow-[0_0_8px_#f43f5e]" />
-                <span className="text-slate-300 font-semibold">LOGISTICS COST</span>
+                <span className="text-slate-300 font-semibold">{tr('LOGISTICS COST', 'تكاليف اللوجستيات')}</span>
               </div>
             </div>
           </div>
@@ -444,30 +446,30 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
           {/* Under-Chart Telemetry Strip */}
           <div className="pt-3 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs font-mono">
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-500 text-[10px] block">LIVE SPREAD</span>
+              <span className="text-slate-500 text-[10px] block">{tr('LIVE SPREAD', 'الفارق الصافي المباشر')}</span>
               <span className="text-emerald-400 font-bold text-sm">
                 +€{(displayRevenue - totalCosts).toFixed(2)}
               </span>
             </div>
 
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-500 text-[10px] block">DAILY VELOCITY</span>
+              <span className="text-slate-500 text-[10px] block">{tr('DAILY VELOCITY', 'سرعة الطلبيات اليومية')}</span>
               <span className="text-white font-bold text-sm">
-                4.8 ORDERS/HR
+                {tr('4.8 ORDERS/HR', '4.8 طلبية/ساعة')}
               </span>
             </div>
 
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-500 text-[10px] block">FULFILLMENT RATE</span>
+              <span className="text-slate-500 text-[10px] block">{tr('FULFILLMENT RATE', 'معدل الإنجاز')}</span>
               <span className="text-emerald-400 font-bold text-sm">
-                99.4% NOMINAL
+                {tr('99.4% NOMINAL', '99.4% قياسي')}
               </span>
             </div>
 
             <div className="bg-slate-900/60 p-2.5 rounded-lg border border-slate-800">
-              <span className="text-slate-500 text-[10px] block">VOLATILITY INDEX</span>
+              <span className="text-slate-500 text-[10px] block">{tr('VOLATILITY INDEX', 'مؤشر التذبذب')}</span>
               <span className="text-sky-400 font-bold text-sm">
-                LOW (0.12 VOL)
+                {tr('LOW (0.12 VOL)', 'منخفض (0.12)')}
               </span>
             </div>
           </div>
@@ -480,9 +482,9 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-800 text-xs font-mono mb-2">
               <div className="flex items-center gap-1.5 text-slate-300 font-bold">
                 <Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" />
-                <span>ORDER TAPE STREAM</span>
+                <span>{tr('ORDER TAPE STREAM', 'سجل الحركات المباشر')}</span>
               </div>
-              <span className="text-slate-500 text-[10px]">REAL-TIME</span>
+              <span className="text-slate-500 text-[10px]">{tr('REAL-TIME', 'فوري')}</span>
             </div>
 
             <div className="space-y-2 overflow-y-auto flex-1 pr-1 text-xs font-mono">
@@ -498,7 +500,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
                         {t.description}
                       </div>
                       <div className="text-[10px] text-slate-500">
-                        {t.date} · {t.category}
+                        {t.date} · {translateCategory(t.category)}
                       </div>
                     </div>
                     <div
@@ -519,29 +521,29 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
             <div className="flex items-center justify-between pb-2 border-b border-slate-800 mb-3">
               <div className="flex items-center gap-1.5 text-slate-300 font-bold">
                 <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                <span>LIVE LEDGER SUMMARY</span>
+                <span>{tr('LIVE LEDGER SUMMARY', 'ملخص السجل المباشر')}</span>
               </div>
-              <span className="text-emerald-400 font-bold">{transactions.length} RECORDS</span>
+              <span className="text-emerald-400 font-bold">{transactions.length} {tr('RECORDS', 'حركة')}</span>
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-[11px]">
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Total Revenue</div>
+                <div className="text-slate-400">{tr('Total Revenue', 'إجمالي الإيرادات')}</div>
                 <div className="text-emerald-400 font-bold mt-0.5">€{totalRevenue.toFixed(2)}</div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Total Costs</div>
+                <div className="text-slate-400">{tr('Total Costs', 'إجمالي التكاليف')}</div>
                 <div className="text-rose-400 font-bold mt-0.5">€{totalCosts.toFixed(2)}</div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Operating Net</div>
+                <div className="text-slate-400">{tr('Operating Net', 'الصافي التشغيلي')}</div>
                 <div className={`${totalRevenue - totalCosts >= 0 ? 'text-emerald-400' : 'text-rose-400'} font-bold mt-0.5`}>
                   €{(totalRevenue - totalCosts).toFixed(2)}
                 </div>
               </div>
               <div className="p-2 rounded bg-slate-900/80 border border-slate-800">
-                <div className="text-slate-400">Client Accounts</div>
-                <div className="text-sky-400 font-bold mt-0.5">{customers.length} Active</div>
+                <div className="text-slate-400">{tr('Client Accounts', 'حسابات الزبائن')}</div>
+                <div className="text-sky-400 font-bold mt-0.5">{customers.length} {tr('Active', 'نشط')}</div>
               </div>
             </div>
           </div>
@@ -554,7 +556,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
       <div className="shrink-0 bg-[#080b10] border-t border-slate-800/80 px-4 py-2 flex items-center justify-between z-20 text-xs font-mono">
         <div className="flex items-center gap-3">
           <Truck className="w-4 h-4 text-sky-400 shrink-0" />
-          <span className="text-slate-400 hidden sm:inline">LOCAL PARCEL CARRIERS:</span>
+          <span className="text-slate-400 hidden sm:inline">{tr('LOCAL PARCEL CARRIERS:', 'شركات الشحن المحلي:')}</span>
           <span className="text-emerald-400 font-bold">DHL PAKET [LOCAL]</span>
           <span className="text-slate-600">·</span>
           <span className="text-emerald-400 font-bold">DPD STANDARD [LOCAL]</span>
@@ -563,7 +565,7 @@ export const LiveExchangeTerminal: React.FC<LiveExchangeTerminalProps> = ({
         </div>
 
         <div className="flex items-center gap-4 text-slate-400 text-[11px]">
-          <span className="text-slate-500 font-bold">PRESS ESC TO RETURN</span>
+          <span className="text-slate-500 font-bold">{tr('PRESS ESC TO RETURN', 'اضغط ESC للعودة')}</span>
         </div>
       </div>
     </div>
